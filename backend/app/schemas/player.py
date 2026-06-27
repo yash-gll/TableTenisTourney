@@ -58,6 +58,18 @@ class PublicProfileOut(BaseModel):
     stats: PlayerStatsOut
 
 
+class BadgeOut(BaseModel):
+    key: str
+    label: str
+    icon: str
+    description: str
+
+
+class PlayerAchievementsOut(BaseModel):
+    player_id: uuid.UUID
+    achievements: list[BadgeOut]
+
+
 class MeResponse(BaseModel):
     """Result of GET /auth/me."""
 

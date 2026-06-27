@@ -65,6 +65,18 @@ export interface PublicProfile {
   stats: PlayerStats;
 }
 
+export interface Badge {
+  key: string;
+  label: string;
+  icon: string;
+  description: string;
+}
+
+export interface PlayerAchievements {
+  player_id: string;
+  achievements: Badge[];
+}
+
 export interface AdminPlayer {
   player_id: string;
   user_id: string;

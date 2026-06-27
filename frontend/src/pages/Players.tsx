@@ -2,10 +2,14 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
+import { AchievementBadges } from "../components/AchievementBadges";
 import { AppShell } from "../components/AppShell";
 import { Avatar } from "../components/Avatar";
+import { RatingSparkline } from "../components/RatingSparkline";
 import { SkillsCard } from "../components/SkillsCard";
 import { Card, Input } from "../components/ui";
+
+const MEDALS: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
 import type { PublicPlayer, PublicProfile } from "../lib/types";
@@ -42,18 +46,24 @@ export function PlayersDirectory() {
           </Card>
         ) : (
           <div className="space-y-2">
-            {data.map((p) => (
-              <Link key={p.player_id} to={`/players/${p.player_id}`} className="block">
-                <Card className="flex items-center gap-3 active:bg-slate-50">
-                  <Avatar name={p.display_name} size={44} />
-                  <div className="min-w-0 flex-1">
-                    <div className="font-medium">{p.display_name}</div>
-                    <div className="text-sm text-slate-500">Rating {p.current_rating}</div>
-                  </div>
-                  <span className="text-slate-300">›</span>
-                </Card>
-              </Link>
-            ))}
+            {data.map((p, i) => {
+              const rank = i + 1;
+              return (
+                <Link key={p.player_id} to={`/players/${p.player_id}`} className="block">
+                  <Card className="flex items-center gap-3 active:bg-slate-50">
+                    <span className="w-6 shrink-0 text-center text-sm font-semibold text-slate-500">
+                      {MEDALS[rank] ?? rank}
+                    </span>
+                    <Avatar name={p.display_name} size={44} />
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium">{p.display_name}</div>
+                      <div className="text-sm text-slate-500">Rating {p.current_rating}</div>
+                    </div>
+                    <span className="text-slate-300">›</span>
+                  </Card>
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>
@@ -99,6 +109,8 @@ export function PublicProfilePage() {
           </div>
         </div>
 
+        <AchievementBadges playerId={profile.player_id} />
+
         <div className="grid grid-cols-3 gap-2">
           <Stat label="Played" value={s.matches_played} />
           <Stat label="Wins" value={s.wins} />
@@ -107,6 +119,8 @@ export function PublicProfilePage() {
           <Stat label="Tourneys" value={s.tournaments_played} />
           <Stat label="Titles" value={s.tournament_wins} />
         </div>
+
+        <RatingSparkline playerId={profile.player_id} />
 
         <div>
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">Skills</h2>

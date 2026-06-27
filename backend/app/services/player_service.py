@@ -10,6 +10,7 @@ from app.db.models.player_profile import PlayerProfile
 from app.db.models.team_member import TeamMember
 from app.db.models.tournament_result import TournamentResult
 from app.db.models.user import User
+from app.domain.achievements import AchievementInput, Badge, earned_badges
 from app.schemas.player import PlayerStatsOut, ProfileUpdate
 
 
@@ -91,4 +92,54 @@ class PlayerService:
             win_pct=win_pct,
             tournaments_played=int(tournaments_played),
             tournament_wins=int(tournament_wins),
+        )
+
+    def achievements(self, player_id: uuid.UUID) -> list[Badge]:
+        team_ids = list(
+            self.db.execute(
+                select(TeamMember.team_id).where(TeamMember.player_id == player_id)
+            ).scalars()
+        )
+        if not team_ids:
+            return earned_badges(AchievementInput(0, 0, 0, 0, 0, 0))
+
+        results = self.db.execute(
+            select(TournamentResult).where(
+                or_(
+                    TournamentResult.champion_team_id.in_(team_ids),
+                    TournamentResult.runner_up_team_id.in_(team_ids),
+                    TournamentResult.third_place_team_id.in_(team_ids),
+                    TournamentResult.fourth_place_team_id.in_(team_ids),
+                )
+            )
+        ).scalars().all()
+        titles = sum(1 for r in results if r.champion_team_id in team_ids)
+        finals = sum(
+            1 for r in results
+            if r.champion_team_id in team_ids or r.runner_up_team_id in team_ids
+        )
+        podiums = len(results)
+
+        matches = self.db.execute(
+            select(Match).where(
+                Match.status == MatchStatus.COMPLETED,
+                or_(Match.team_a_id.in_(team_ids), Match.team_b_id.in_(team_ids)),
+            ).order_by(Match.completed_at)
+        ).scalars().all()
+        played = len(matches)
+        wins = 0
+        streak = longest = 0
+        for m in matches:
+            if m.winner_team_id in team_ids:
+                wins += 1
+                streak += 1
+                longest = max(longest, streak)
+            else:
+                streak = 0
+
+        return earned_badges(
+            AchievementInput(
+                titles=titles, finals_reached=finals, podiums=podiums,
+                matches_played=played, wins=wins, longest_win_streak=longest,
+            )
         )

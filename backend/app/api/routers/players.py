@@ -9,6 +9,8 @@ from app.db.session import get_db
 from app.domain import skills as skills_domain
 from app.schemas.mappers import to_profile_out
 from app.schemas.player import (
+    BadgeOut,
+    PlayerAchievementsOut,
     PlayerProfileOut,
     ProfileUpdate,
     PublicPlayerOut,
@@ -67,6 +69,22 @@ def get_public_profile(player_id: uuid.UUID, db: Session = Depends(get_db)) -> P
         current_rating=profile.current_rating,
         highest_rating=profile.highest_rating,
         stats=service.stats(player_id),
+    )
+
+
+@router.get("/{player_id}/achievements", response_model=PlayerAchievementsOut)
+def get_player_achievements(
+    player_id: uuid.UUID, db: Session = Depends(get_db)
+) -> PlayerAchievementsOut:
+    service = PlayerService(db)
+    service.get_profile(player_id)  # 404 if unknown
+    badges = service.achievements(player_id)
+    return PlayerAchievementsOut(
+        player_id=player_id,
+        achievements=[
+            BadgeOut(key=b.key, label=b.label, icon=b.icon, description=b.description)
+            for b in badges
+        ],
     )
 
 

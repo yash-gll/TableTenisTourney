@@ -1,9 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
+import { AchievementBadges } from "../components/AchievementBadges";
 import { AppShell } from "../components/AppShell";
 import { Avatar } from "../components/Avatar";
 import { RatingHistory } from "../components/RatingHistory";
+import { RatingSparkline } from "../components/RatingSparkline";
 import { SkillsCard } from "../components/SkillsCard";
 import { Button, Card, Input, StatusBadge } from "../components/ui";
 import { api } from "../lib/api";
@@ -88,6 +90,8 @@ export function Dashboard() {
 
             <StatusBanner profile={profile} />
 
+            <AchievementBadges playerId={profile.id} />
+
             <Card>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
@@ -112,7 +116,10 @@ export function Dashboard() {
               <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
                 Rating history
               </h2>
-              <RatingHistory playerId={profile.id} />
+              <div className="space-y-3">
+                <RatingSparkline playerId={profile.id} />
+                <RatingHistory playerId={profile.id} />
+              </div>
             </div>
 
             <Card>
