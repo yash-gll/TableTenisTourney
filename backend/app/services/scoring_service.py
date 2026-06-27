@@ -147,6 +147,11 @@ class ScoringService:
             ip_address=meta.get("ip_address"), user_agent=meta.get("user_agent"),
         )
         self._after_correction(match, tournament, old_winner, reset_dependents, actor, meta)
+        # A corrected score changes Elo deltas — replay the tournament from the
+        # start snapshots so ratings reflect the corrected history.
+        from app.services.rating_service import RatingService
+
+        RatingService(self.db).replay(match.tournament_id)
         self.db.commit()
         self.db.refresh(match)
         return match
@@ -154,6 +159,11 @@ class ScoringService:
     # -- post-result hooks (bracket propagation added in Phase 5) ----------
 
     def _after_result(self, match: Match, tournament: Tournament) -> None:
+        # Apply Elo for the completed match (group or bracket) first.
+        from app.services.rating_service import RatingService
+
+        RatingService(self.db).apply_match(match)
+
         if match.stage == MatchStage.GROUP:
             self._maybe_complete_group(tournament)
             return

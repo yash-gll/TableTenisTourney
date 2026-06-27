@@ -86,6 +86,28 @@ def delete_tournament(
     TournamentService(db).delete(tournament_id=tournament_id, actor=actor, meta=meta)
 
 
+@router.post("/{tournament_id}/finalize", response_model=TournamentOut)
+def finalize_tournament(
+    tournament_id: uuid.UUID,
+    actor: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+    meta: dict = Depends(get_request_meta),
+) -> TournamentOut:
+    t = TournamentService(db).finalize(tournament_id=tournament_id, actor=actor, meta=meta)
+    return to_tournament_out(t)
+
+
+@router.post("/{tournament_id}/reopen", response_model=TournamentOut)
+def reopen_tournament(
+    tournament_id: uuid.UUID,
+    actor: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+    meta: dict = Depends(get_request_meta),
+) -> TournamentOut:
+    t = TournamentService(db).reopen(tournament_id=tournament_id, actor=actor, meta=meta)
+    return to_tournament_out(t)
+
+
 @router.post("/{tournament_id}/schedule/generate", response_model=ScheduleGenerateResponse)
 def generate_schedule(
     tournament_id: uuid.UUID,

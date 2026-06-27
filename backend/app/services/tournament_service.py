@@ -1,6 +1,7 @@
 import re
 import secrets
 import uuid
+from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -8,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core import errors
 from app.db.models.enums import AuditSeverity, TournamentStatus, TournamentVisibility
 from app.db.models.tournament import Tournament
+from app.db.models.tournament_result import TournamentResult
 from app.db.models.user import User
 from app.domain import tournament_state
 from app.schemas.tournament import TournamentCreate, TournamentUpdate
@@ -164,6 +166,102 @@ class TournamentService:
             else AuditSeverity.INFO,
             ip_address=meta.get("ip_address"),
             user_agent=meta.get("user_agent"),
+        )
+        self.db.commit()
+        self.db.refresh(t)
+        return t
+
+    def finalize(self, *, tournament_id: uuid.UUID, actor: User, meta: dict) -> Tournament:
+        from app.services.bracket_service import BracketService
+        from app.services.leaderboard_service import LeaderboardService
+        from app.services.rating_service import RatingService
+
+        t = self.get(tournament_id)
+        if t.status != TournamentStatus.COMPLETED:
+            raise errors.tournament_not_ready_to_finalize()
+
+        lb_result, names, _ = LeaderboardService(self.db).compute(tournament_id)
+        bracket_matches, placements = BracketService(self.db).get_bracket(tournament_id)
+        if len(placements) < 4:
+            raise errors.tournament_not_ready_to_finalize()
+
+        rs = RatingService(self.db)
+        rs.apply_placement_bonuses(tournament_id, placements)
+        rs.snapshot_end(tournament_id)
+
+        place_to_team = {place: tid for tid, place in placements.items()}
+        final_lb = [
+            {
+                "rank": s.rank, "team_id": s.team_id, "team_name": names.get(s.team_id, "?"),
+                "wins": s.wins, "losses": s.losses, "table_points": s.table_points,
+                "points_for": s.points_for, "points_against": s.points_against,
+                "point_difference": s.point_difference,
+            }
+            for s in lb_result.standings
+        ]
+        final_bracket = {
+            "matches": [
+                {
+                    "stage": m.stage.value,
+                    "team_a": m.team_a.name if m.team_a else None,
+                    "team_b": m.team_b.name if m.team_b else None,
+                    "team_a_score": m.team_a_score, "team_b_score": m.team_b_score,
+                    "winner_team_id": str(m.winner_team_id) if m.winner_team_id else None,
+                }
+                for m in bracket_matches
+            ],
+            "placements": [
+                {"place": p, "team_id": tid, "team_name": names.get(tid, "?")}
+                for tid, p in sorted(placements.items(), key=lambda kv: kv[1])
+            ],
+        }
+
+        result = TournamentResult(
+            tournament_id=tournament_id,
+            champion_team_id=uuid.UUID(place_to_team[1]) if 1 in place_to_team else None,
+            runner_up_team_id=uuid.UUID(place_to_team[2]) if 2 in place_to_team else None,
+            third_place_team_id=uuid.UUID(place_to_team[3]) if 3 in place_to_team else None,
+            fourth_place_team_id=uuid.UUID(place_to_team[4]) if 4 in place_to_team else None,
+            final_group_leaderboard={"standings": final_lb},
+            final_bracket=final_bracket,
+            finalized_at=datetime.now(tz=UTC),
+            finalized_by=actor.id,
+        )
+        self.db.add(result)
+
+        t.status = TournamentStatus.FINALIZED
+        t.finalized_at = datetime.now(tz=UTC)
+        t.rating_status = "FINALIZED"
+        self.audit.record(
+            actor_user_id=actor.id, action="tournament.finalize", entity_type="tournament",
+            entity_id=str(tournament_id), after_data={"champion": place_to_team.get(1)},
+            ip_address=meta.get("ip_address"), user_agent=meta.get("user_agent"),
+        )
+        self.db.commit()
+        self.db.refresh(t)
+        return t
+
+    def reopen(self, *, tournament_id: uuid.UUID, actor: User, meta: dict) -> Tournament:
+        from app.services.rating_service import RatingService
+
+        t = self.get(tournament_id)
+        if t.status != TournamentStatus.FINALIZED:
+            raise errors.tournament_not_finalized()
+
+        RatingService(self.db).revert_placement_bonuses(tournament_id)
+        result = self.db.execute(
+            select(TournamentResult).where(TournamentResult.tournament_id == tournament_id)
+        ).scalar_one_or_none()
+        if result is not None:
+            self.db.delete(result)
+
+        t.status = TournamentStatus.COMPLETED
+        t.finalized_at = None
+        t.rating_status = None
+        self.audit.record(
+            actor_user_id=actor.id, action="tournament.reopen", entity_type="tournament",
+            entity_id=str(tournament_id), severity=AuditSeverity.CRITICAL,
+            ip_address=meta.get("ip_address"), user_agent=meta.get("user_agent"),
         )
         self.db.commit()
         self.db.refresh(t)

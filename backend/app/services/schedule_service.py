@@ -87,6 +87,11 @@ class ScheduleService:
                 )
 
         tournament.status = TournamentStatus.SCHEDULED
+        # Snapshot each participating player's rating as the replay baseline.
+        from app.services.rating_service import RatingService
+
+        self.db.flush()
+        RatingService(self.db).snapshot_start(tournament_id)
         self.audit.record(
             actor_user_id=actor.id,
             action="schedule.generate",

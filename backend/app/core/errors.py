@@ -216,3 +216,20 @@ def bracket_already_generated() -> AppError:
     return AppError(
         status.HTTP_409_CONFLICT, "BRACKET_ALREADY_GENERATED", "The bracket already exists."
     )
+
+
+# Finalization ---------------------------------------------------------------
+
+
+def tournament_not_ready_to_finalize() -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT,
+        "TOURNAMENT_NOT_READY_TO_FINALIZE",
+        "The tournament cannot be finalized until the Final is complete.",
+    )
+
+
+def tournament_not_finalized() -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT, "TOURNAMENT_NOT_FINALIZED", "The tournament is not finalized."
+    )
