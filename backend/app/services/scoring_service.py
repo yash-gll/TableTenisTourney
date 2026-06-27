@@ -148,10 +148,13 @@ class ScoringService:
         )
         self._after_correction(match, tournament, old_winner, reset_dependents, actor, meta)
         # A corrected score changes Elo deltas — replay the tournament from the
-        # start snapshots so ratings reflect the corrected history.
+        # start snapshots so ratings reflect the corrected history. Re-grade any
+        # predictions on this match too.
+        from app.services.prediction_service import PredictionService
         from app.services.rating_service import RatingService
 
         RatingService(self.db).replay(match.tournament_id)
+        PredictionService(self.db).evaluate_match(match)
         self.db.commit()
         self.db.refresh(match)
         return match
@@ -160,9 +163,11 @@ class ScoringService:
 
     def _after_result(self, match: Match, tournament: Tournament) -> None:
         # Apply Elo for the completed match (group or bracket) first.
+        from app.services.prediction_service import PredictionService
         from app.services.rating_service import RatingService
 
         RatingService(self.db).apply_match(match)
+        PredictionService(self.db).evaluate_match(match)
 
         if match.stage == MatchStage.GROUP:
             self._maybe_complete_group(tournament)

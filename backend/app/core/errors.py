@@ -263,3 +263,20 @@ def registration_not_found() -> AppError:
     return AppError(
         status.HTTP_404_NOT_FOUND, "REGISTRATION_NOT_FOUND", "Registration not found."
     )
+
+
+# Predictions ----------------------------------------------------------------
+
+
+def match_not_predictable() -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT,
+        "MATCH_NOT_PREDICTABLE",
+        "Predictions are closed for this match.",
+    )
+
+
+def invalid_prediction() -> AppError:
+    return AppError(
+        422, "INVALID_PREDICTION", "Pick must be one of the two teams in the match."
+    )

@@ -8,6 +8,7 @@ import { BracketView } from "../components/BracketView";
 import { LeaderboardTable } from "../components/LeaderboardTable";
 import { MatchList } from "../components/MatchList";
 import { PlayerPicker } from "../components/PlayerPicker";
+import { PredictionLeaderboard } from "../components/PredictionLeaderboard";
 import { AdminRegistrations, PlayerRegistration } from "../components/Registrations";
 import { Button, Card, Input } from "../components/ui";
 import { ApiError, api } from "../lib/api";
@@ -17,6 +18,7 @@ import type {
   ExplanationResponse,
   Leaderboard,
   Match,
+  MyPrediction,
   Team,
   Tournament,
   TournamentStatus,
@@ -112,6 +114,27 @@ export function TournamentDetail() {
     queryFn: () => api<Bracket>(`/tournaments/${id}/bracket`),
     refetchInterval: livePoll,
     enabled: hasBracket && activeTab === "bracket",
+  });
+
+  // Predictions (pick'em) — players only.
+  const canPredict = !isAdmin && hasSchedule;
+  const { data: myPredictions } = useQuery({
+    queryKey: ["predictions-me", id],
+    queryFn: () => api<MyPrediction[]>(`/tournaments/${id}/predictions/me`),
+    enabled: canPredict,
+    refetchInterval: livePoll,
+  });
+  const predictionMap = Object.fromEntries(
+    (myPredictions ?? []).map((p) => [p.match_id, p.predicted_winner_team_id]),
+  );
+  const predict = useMutation({
+    mutationFn: ({ matchId, teamId }: { matchId: string; teamId: string }) =>
+      api(`/matches/${matchId}/predict`, { method: "POST", body: { winner_team_id: teamId } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["predictions-me", id] });
+      queryClient.invalidateQueries({ queryKey: ["prediction-leaderboard", id] });
+    },
+    onError: (e) => setError(e instanceof ApiError ? e.message : "Couldn't save your pick"),
   });
 
   const transition = useMutation({
@@ -304,12 +327,18 @@ export function TournamentDetail() {
         )}
 
         {activeTab === "matches" && (
-          <MatchList
-            matches={matches ?? []}
-            targetPoints={t.target_points}
-            editable={isAdmin && t.status !== "COMPLETED" && t.status !== "FINALIZED"}
-            onChanged={invalidate}
-          />
+          <div className="space-y-4">
+            <MatchList
+              matches={matches ?? []}
+              targetPoints={t.target_points}
+              editable={isAdmin && t.status !== "COMPLETED" && t.status !== "FINALIZED"}
+              onChanged={invalidate}
+              canPredict={canPredict}
+              predictions={predictionMap}
+              onPredict={(matchId, teamId) => predict.mutate({ matchId, teamId })}
+            />
+            <PredictionLeaderboard tournamentId={id} pollMs={livePoll} />
+          </div>
         )}
 
         {activeTab === "table" && leaderboard && (

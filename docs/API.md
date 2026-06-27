@@ -155,6 +155,18 @@ player's `/tournaments` list so they can find them.
 Optimistic locking: a stale `expected_version` returns `409 MATCH_VERSION_CONFLICT`
 with the latest version. Invalid scores return `422 INVALID_MATCH_SCORE`.
 
+## Predictions (pick'em)
+
+Players predict match winners; correct picks score 1 point and feed a
+per-tournament leaderboard. Predictions lock when a match completes and are
+re-graded automatically if a result is corrected.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/matches/{match_id}/predict` | approved player | `{ winner_team_id }`. Only while scheduled/in-progress. Upserts. |
+| GET | `/tournaments/{id}/predictions/me` | approved player | Your picks for the tournament. |
+| GET | `/tournaments/{id}/predictions/leaderboard` | public | Ranked predictors (points, correct/total). |
+
 ## Leaderboard
 
 | Method | Path | Auth | Description |

@@ -14,6 +14,7 @@ from app.api.routers import (
     leaderboards,
     matches,
     players,
+    predictions,
     ratings,
     registrations,
     teams,
@@ -78,6 +79,7 @@ app.include_router(brackets.router, prefix=API_PREFIX)
 app.include_router(ratings.router, prefix=API_PREFIX)
 app.include_router(history.router, prefix=API_PREFIX)
 app.include_router(registrations.router, prefix=API_PREFIX)
+app.include_router(predictions.router, prefix=API_PREFIX)
 
 
 @app.get("/")

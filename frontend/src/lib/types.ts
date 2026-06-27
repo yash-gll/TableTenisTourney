@@ -111,6 +111,20 @@ export interface RegistrationItem {
   created_at: string;
 }
 
+export interface MyPrediction {
+  match_id: string;
+  predicted_winner_team_id: string;
+  is_correct: boolean | null;
+}
+
+export interface PredictionRow {
+  player_id: string;
+  display_name: string;
+  points: number;
+  correct: number;
+  total: number;
+}
+
 export interface AdminPlayer {
   player_id: string;
   user_id: string;

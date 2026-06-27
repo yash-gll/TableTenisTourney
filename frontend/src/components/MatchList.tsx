@@ -10,6 +10,10 @@ interface Props {
   targetPoints: number;
   editable: boolean;
   onChanged: () => void;
+  // Prediction (pick'em) support — shown to players, not in admin-scoring mode.
+  canPredict?: boolean;
+  predictions?: Record<string, string>; // match_id -> predicted team_id
+  onPredict?: (matchId: string, teamId: string) => void;
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -19,7 +23,15 @@ const STATUS_LABEL: Record<string, string> = {
   COMPLETED: "Final",
 };
 
-export function MatchList({ matches, targetPoints, editable, onChanged }: Props) {
+export function MatchList({
+  matches,
+  targetPoints,
+  editable,
+  onChanged,
+  canPredict = false,
+  predictions = {},
+  onPredict,
+}: Props) {
   const [scoring, setScoring] = useState<{ match: Match; correct: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -97,6 +109,45 @@ export function MatchList({ matches, targetPoints, editable, onChanged }: Props)
                 {STATUS_LABEL[m.status] ?? m.status}
               </span>
             </div>
+
+            {canPredict && m.team_a_id && m.team_b_id && (() => {
+              const pick = predictions[m.id];
+              const open = m.status === "SCHEDULED" || m.status === "IN_PROGRESS";
+              if (open) {
+                const btn = (teamId: string, name: string | null) => (
+                  <button
+                    onClick={() => onPredict?.(m.id, teamId)}
+                    className={`flex-1 rounded-md border px-2 py-1.5 text-xs font-medium ${
+                      pick === teamId
+                        ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                        : "border-slate-200 text-slate-600 active:bg-slate-50"
+                    }`}
+                  >
+                    {name}
+                  </button>
+                );
+                return (
+                  <div className="mt-3">
+                    <div className="mb-1 text-xs text-slate-400">Your pick</div>
+                    <div className="flex gap-2">
+                      {btn(m.team_a_id, m.team_a_name)}
+                      {btn(m.team_b_id, m.team_b_name)}
+                    </div>
+                  </div>
+                );
+              }
+              if (m.status === "COMPLETED" && pick) {
+                const correct = pick === m.winner_team_id;
+                return (
+                  <div className="mt-2 text-xs font-medium">
+                    <span className={correct ? "text-emerald-600" : "text-rose-500"}>
+                      {correct ? "✓ You called it" : "✗ Missed this one"}
+                    </span>
+                  </div>
+                );
+              }
+              return null;
+            })()}
 
             {editable && (
               <div className="mt-3 flex gap-2">
