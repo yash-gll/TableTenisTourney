@@ -32,6 +32,32 @@ class PlayerProfileOut(BaseModel):
     created_at: datetime
 
 
+class PublicPlayerOut(BaseModel):
+    """Directory entry — public-safe (no email)."""
+
+    player_id: uuid.UUID
+    display_name: str
+    current_rating: int
+    highest_rating: int
+
+
+class PlayerStatsOut(BaseModel):
+    matches_played: int
+    wins: int
+    losses: int
+    win_pct: float
+    tournaments_played: int
+    tournament_wins: int
+
+
+class PublicProfileOut(BaseModel):
+    player_id: uuid.UUID
+    display_name: str
+    current_rating: int
+    highest_rating: int
+    stats: PlayerStatsOut
+
+
 class MeResponse(BaseModel):
     """Result of GET /auth/me."""
 

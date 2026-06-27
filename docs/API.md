@@ -52,6 +52,15 @@ Notes:
 | GET | `/players/me` | player | Full own profile (email, ratings, approval status) |
 | PATCH | `/players/me` | player | `{ display_name?, bio? }` |
 
+## Player directory (public)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/players?search=<q>` | public | Approved players (public-safe: name + ratings, no email), name-filtered, ranked by rating. |
+| GET | `/players/{id}` | public | Public profile: name, current/highest rating, and match stats (played, wins, losses, win %, tournaments played, titles). |
+
+(`/players/me` resolves to the authenticated profile and is matched before `/{id}`.)
+
 ## Player skills (coaching attributes, 0–100)
 
 Admin-curated skill card, separate from the competitive Elo rating. Default

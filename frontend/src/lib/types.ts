@@ -41,6 +41,30 @@ export interface PlayerSkills {
   skills: SkillItem[];
 }
 
+export interface PublicPlayer {
+  player_id: string;
+  display_name: string;
+  current_rating: number;
+  highest_rating: number;
+}
+
+export interface PlayerStats {
+  matches_played: number;
+  wins: number;
+  losses: number;
+  win_pct: number;
+  tournaments_played: number;
+  tournament_wins: number;
+}
+
+export interface PublicProfile {
+  player_id: string;
+  display_name: string;
+  current_rating: number;
+  highest_rating: number;
+  stats: PlayerStats;
+}
+
 export interface AdminPlayer {
   player_id: string;
   user_id: string;

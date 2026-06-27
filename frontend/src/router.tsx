@@ -8,6 +8,7 @@ import { ForgotPassword } from "./pages/ForgotPassword";
 import { HistoryDetailPage, HistoryList } from "./pages/History";
 import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
+import { PlayersDirectory, PublicProfilePage } from "./pages/Players";
 import { Register } from "./pages/Register";
 import { ResetPassword } from "./pages/ResetPassword";
 import { TournamentCreate } from "./pages/TournamentCreate";
@@ -57,6 +58,22 @@ export function AppRoutes() {
           <RequireAdmin>
             <AdminPendingPlayers />
           </RequireAdmin>
+        }
+      />
+      <Route
+        path="/players"
+        element={
+          <RequireAuth>
+            <PlayersDirectory />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/players/:id"
+        element={
+          <RequireAuth>
+            <PublicProfilePage />
+          </RequireAuth>
         }
       />
       <Route

@@ -54,19 +54,17 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
   const navigate = useNavigate();
   const location = useLocation();
 
-  const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
   const tabs: Tab[] = [{ to: "/dashboard", label: "Profile", icon: ProfileIcon }];
   tabs.push({ to: "/tournaments", label: "Tournaments", icon: TrophyIcon });
-  if (isAdmin) {
-    tabs.push({ to: "/admin", label: "Players", icon: PlayersIcon });
-  }
+  tabs.push({ to: "/players", label: "Players", icon: PlayersIcon });
   tabs.push({ to: "/history", label: "History", icon: HistoryIcon });
   const showBottomNav = tabs.length > 1;
 
-  // Highlight a tab on its nested routes too.
+  // Highlight a tab on its nested routes too (admin management lives under Players).
   const isActive = (to: string) =>
     location.pathname === to ||
     (to === "/tournaments" && location.pathname.startsWith("/tournaments")) ||
+    (to === "/players" && (location.pathname.startsWith("/players") || location.pathname.startsWith("/admin"))) ||
     (to === "/history" && location.pathname.startsWith("/history"));
 
   const onLogout = async () => {
