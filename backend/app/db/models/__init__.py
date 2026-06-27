@@ -1,6 +1,7 @@
 from app.db.models.audit_log import AuditLog
 from app.db.models.auth_token import AuthToken, RefreshToken
 from app.db.models.match import Match
+from app.db.models.match_dependency import MatchDependency
 from app.db.models.player_profile import PlayerProfile
 from app.db.models.team import Team
 from app.db.models.team_member import TeamMember
@@ -17,4 +18,5 @@ __all__ = [
     "Team",
     "TeamMember",
     "Match",
+    "MatchDependency",
 ]

@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routers import (
     admin_players,
     auth,
+    brackets,
     health,
     leaderboards,
     matches,
@@ -40,6 +41,7 @@ app.include_router(tournaments.router, prefix=API_PREFIX)
 app.include_router(teams.router, prefix=API_PREFIX)
 app.include_router(matches.router, prefix=API_PREFIX)
 app.include_router(leaderboards.router, prefix=API_PREFIX)
+app.include_router(brackets.router, prefix=API_PREFIX)
 
 
 @app.get("/")

@@ -156,14 +156,37 @@ class ScoringService:
     def _after_result(self, match: Match, tournament: Tournament) -> None:
         if match.stage == MatchStage.GROUP:
             self._maybe_complete_group(tournament)
+            return
+        # Bracket match completed: propagate winner/loser into dependent slots.
+        from app.services.bracket_service import BracketService
+
+        BracketService(self.db).propagate_from(match)
+        if match.stage == MatchStage.FINAL:
+            tournament.status = TournamentStatus.COMPLETED
 
     def _after_correction(
         self, match: Match, tournament: Tournament, old_winner: uuid.UUID | None,
         reset_dependents: bool, actor: User, meta: dict,
     ) -> None:
-        # Group corrections only affect standings, which are computed on demand.
-        # Bracket propagation/reset is added in Phase 5.
-        return
+        # Group corrections only affect standings, computed on demand.
+        if match.stage == MatchStage.GROUP:
+            return
+        # Bracket: if the winner (hence the propagated participant) didn't change,
+        # downstream is unaffected.
+        if match.winner_team_id == old_winner:
+            return
+
+        from app.services.bracket_service import BracketService
+
+        bracket = BracketService(self.db)
+        dependents = bracket._dependents_of(match)
+        if not dependents:
+            return
+        if bracket.has_started_dependents(match) and not reset_dependents:
+            raise errors.dependent_match_already_started()
+        # Safe: reset downstream, then re-propagate from the corrected result.
+        bracket.reset_cascade(match, actor, meta)
+        bracket.propagate_from(match)
 
     def _maybe_complete_group(self, tournament: Tournament) -> None:
         if tournament.status not in (TournamentStatus.GROUP_IN_PROGRESS, TournamentStatus.SCHEDULED):
