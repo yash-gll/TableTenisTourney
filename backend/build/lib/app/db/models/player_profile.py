@@ -2,7 +2,8 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Integer, String, Text, Uuid
+from sqlalchemy import JSON, DateTime, Enum, ForeignKey, Integer, String, Text, Uuid
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDMixin
@@ -12,6 +13,7 @@ if TYPE_CHECKING:
     from app.db.models.user import User
 
 STARTING_RATING = 1000
+_JSONType = JSON().with_variant(JSONB(), "postgresql")
 
 
 class PlayerProfile(UUIDMixin, TimestampMixin, Base):
@@ -35,6 +37,8 @@ class PlayerProfile(UUIDMixin, TimestampMixin, Base):
     current_rating: Mapped[int] = mapped_column(Integer, default=STARTING_RATING, nullable=False)
     highest_rating: Mapped[int] = mapped_column(Integer, default=STARTING_RATING, nullable=False)
     bio: Mapped[str | None] = mapped_column(Text)
+    # Admin-curated skill attributes {key: 0-100}; see app/domain/skills.py.
+    skill_ratings: Mapped[dict] = mapped_column(_JSONType, default=dict, server_default="{}")
 
     user: Mapped["User"] = relationship(
         back_populates="profile", foreign_keys=[user_id]

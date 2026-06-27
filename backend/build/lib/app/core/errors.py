@@ -21,12 +21,15 @@ class AppError(HTTPException):
 
 
 def _error_body(code: str, message: str, details: dict[str, Any], request: Request) -> dict:
+    request_id = getattr(request.state, "request_id", None) or request.headers.get(
+        "x-request-id", ""
+    )
     return {
         "error": {
             "code": code,
             "message": message,
             "details": details,
-            "request_id": request.headers.get("x-request-id", ""),
+            "request_id": request_id,
         }
     }
 
@@ -79,7 +82,11 @@ def player_not_found() -> AppError:
 
 
 def reason_required() -> AppError:
-    return AppError(status.HTTP_422_UNPROCESSABLE_ENTITY, "REASON_REQUIRED", "A reason is required.")
+    return AppError(422, "REASON_REQUIRED", "A reason is required.")
+
+
+def invalid_skill_rating(message: str) -> AppError:
+    return AppError(422, "INVALID_SKILL_RATING", message)
 
 
 # Tournaments / teams --------------------------------------------------------
@@ -140,4 +147,96 @@ def player_already_on_team() -> AppError:
         status.HTTP_409_CONFLICT,
         "PLAYER_ALREADY_ON_TEAM",
         "This player is already on a team in this tournament.",
+    )
+
+
+# Schedule / matches ---------------------------------------------------------
+
+
+def schedule_already_generated() -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT, "SCHEDULE_ALREADY_GENERATED", "The schedule already exists."
+    )
+
+
+def team_requires_two_players() -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT,
+        "TEAM_REQUIRES_TWO_PLAYERS",
+        "Every team must have exactly two approved players before scheduling.",
+    )
+
+
+def not_enough_teams(minimum: int) -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT,
+        "NOT_ENOUGH_TEAMS",
+        f"At least {minimum} teams are required.",
+        {"minimum": minimum},
+    )
+
+
+def match_not_found() -> AppError:
+    return AppError(status.HTTP_404_NOT_FOUND, "MATCH_NOT_FOUND", "Match not found.")
+
+
+def invalid_match_score(message: str, details: dict | None = None) -> AppError:
+    return AppError(422, "INVALID_MATCH_SCORE", message, details)
+
+
+def match_version_conflict(latest_version: int) -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT,
+        "MATCH_VERSION_CONFLICT",
+        "The match was modified by someone else. Reload and retry.",
+        {"latest_version": latest_version},
+    )
+
+
+def match_not_editable(message: str = "This match cannot be modified in its current state.") -> AppError:
+    return AppError(status.HTTP_409_CONFLICT, "MATCH_NOT_EDITABLE", message)
+
+
+def dependent_match_already_started() -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT,
+        "DEPENDENT_MATCH_ALREADY_STARTED",
+        "A dependent bracket match has already started; reset dependents to proceed.",
+    )
+
+
+def group_stage_incomplete() -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT, "GROUP_STAGE_INCOMPLETE", "Not all group matches are complete."
+    )
+
+
+def qualification_tie_unresolved() -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT,
+        "QUALIFICATION_TIE_UNRESOLVED",
+        "A tie affecting the top four is unresolved.",
+    )
+
+
+def bracket_already_generated() -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT, "BRACKET_ALREADY_GENERATED", "The bracket already exists."
+    )
+
+
+# Finalization ---------------------------------------------------------------
+
+
+def tournament_not_ready_to_finalize() -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT,
+        "TOURNAMENT_NOT_READY_TO_FINALIZE",
+        "The tournament cannot be finalized until the Final is complete.",
+    )
+
+
+def tournament_not_finalized() -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT, "TOURNAMENT_NOT_FINALIZED", "The tournament is not finalized."
     )

@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user
+from app.core.ratelimit import rate_limit
 from app.db.models.user import User
 from app.db.session import get_db
 from app.schemas.auth import (
@@ -23,7 +24,12 @@ from app.services.auth_service import AuthService
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/register", response_model=MessageResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register",
+    response_model=MessageResponse,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(rate_limit(5, 60, "register"))],
+)
 def register(body: RegisterRequest, db: Session = Depends(get_db)) -> MessageResponse:
     AuthService(db).register(
         email=body.email, password=body.password, display_name=body.display_name
@@ -47,7 +53,11 @@ def resend_verification(
     return MessageResponse(message="If the account exists and is unverified, a new link was sent.")
 
 
-@router.post("/login", response_model=TokenPair)
+@router.post(
+    "/login",
+    response_model=TokenPair,
+    dependencies=[Depends(rate_limit(10, 60, "login"))],
+)
 def login(body: LoginRequest, db: Session = Depends(get_db)) -> TokenPair:
     _, tokens = AuthService(db).login(email=body.email, password=body.password)
     return tokens
@@ -64,13 +74,21 @@ def logout(body: LogoutRequest, db: Session = Depends(get_db)) -> MessageRespons
     return MessageResponse(message="Logged out.")
 
 
-@router.post("/forgot-password", response_model=MessageResponse)
+@router.post(
+    "/forgot-password",
+    response_model=MessageResponse,
+    dependencies=[Depends(rate_limit(5, 60, "forgot"))],
+)
 def forgot_password(body: ForgotPasswordRequest, db: Session = Depends(get_db)) -> MessageResponse:
     AuthService(db).forgot_password(email=body.email)
     return MessageResponse(message="If the account exists, a reset link was sent.")
 
 
-@router.post("/reset-password", response_model=MessageResponse)
+@router.post(
+    "/reset-password",
+    response_model=MessageResponse,
+    dependencies=[Depends(rate_limit(5, 60, "reset"))],
+)
 def reset_password(body: ResetPasswordRequest, db: Session = Depends(get_db)) -> MessageResponse:
     AuthService(db).reset_password(token=body.token, password=body.password)
     return MessageResponse(message="Password updated. Please log in.")

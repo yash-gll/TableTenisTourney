@@ -55,9 +55,10 @@ def main() -> None:
         else:
             user.role = UserRole.ADMIN
             user.account_status = AccountStatus.ACTIVE
+            user.password_hash = hash_password(args.password)  # reset password
             if user.email_verified_at is None:
                 user.email_verified_at = now
-            print(f"Promoted existing user {email} to admin")
+            print(f"Updated existing user {email}: promoted to admin and reset password")
 
         db.commit()
     finally:
