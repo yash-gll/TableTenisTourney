@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { AppShell } from "../components/AppShell";
 import { Avatar } from "../components/Avatar";
 import { RatingHistory } from "../components/RatingHistory";
+import { SkillsCard } from "../components/SkillsCard";
 import { Button, Card, Input, StatusBadge } from "../components/ui";
 import { api } from "../lib/api";
 import type { PlayerProfile } from "../lib/types";
@@ -99,6 +100,13 @@ export function Dashboard() {
                 </div>
               </div>
             </Card>
+
+            <div>
+              <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
+                Skills
+              </h2>
+              <SkillsCard playerId={profile.id} />
+            </div>
 
             <div>
               <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">

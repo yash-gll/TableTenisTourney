@@ -27,6 +27,7 @@ class PlayerProfileOut(BaseModel):
     current_rating: int
     highest_rating: int
     bio: str | None
+    skill_ratings: dict[str, int] = {}
     email_verified: bool
     created_at: datetime
 

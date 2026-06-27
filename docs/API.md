@@ -52,6 +52,18 @@ Notes:
 | GET | `/players/me` | player | Full own profile (email, ratings, approval status) |
 | PATCH | `/players/me` | player | `{ display_name?, bio? }` |
 
+## Player skills (coaching attributes, 0–100)
+
+Admin-curated skill card, separate from the competitive Elo rating. Default
+attributes: Serve, Smash, Spin, Footwork, Consistency (edit `app/domain/skills.py`).
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/players/{id}/skills` | public | Ordered, labelled skill values (null = unrated). |
+| PATCH | `/admin/players/{id}/skills` | admin | `{ ratings: { serve: 80, ... } }` — partial, merged; values 0–100, keys must be known (`422 INVALID_SKILL_RATING` otherwise). |
+
+A player's own values are also included as `skill_ratings` on `GET /players/me`.
+
 ## Admin — player approval
 
 All require an **ADMIN** (or SUPER_ADMIN) token.

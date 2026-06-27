@@ -85,6 +85,10 @@ def reason_required() -> AppError:
     return AppError(422, "REASON_REQUIRED", "A reason is required.")
 
 
+def invalid_skill_rating(message: str) -> AppError:
+    return AppError(422, "INVALID_SKILL_RATING", message)
+
+
 # Tournaments / teams --------------------------------------------------------
 
 

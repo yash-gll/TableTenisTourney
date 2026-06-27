@@ -12,6 +12,7 @@ from app.db.models.enums import (
 )
 from app.db.models.player_profile import PlayerProfile
 from app.db.models.user import User
+from app.domain import skills as skills_domain
 from app.services.audit_service import AuditService
 
 
@@ -78,6 +79,29 @@ class AdminPlayerService:
             },
             reason=reason,
             severity=severity,
+            ip_address=meta.get("ip_address"),
+            user_agent=meta.get("user_agent"),
+        )
+        self.db.commit()
+        self.db.refresh(profile)
+        return profile
+
+    def update_skills(
+        self, *, player_id: uuid.UUID, ratings: dict[str, int], actor: User, meta: dict
+    ) -> PlayerProfile:
+        ok, message = skills_domain.validate_ratings(ratings)
+        if not ok:
+            raise errors.invalid_skill_rating(message or "Invalid skill ratings.")
+        profile = self._get_profile(player_id)
+        merged = dict(profile.skill_ratings or {})
+        merged.update(ratings)
+        profile.skill_ratings = merged
+        self.audit.record(
+            actor_user_id=actor.id,
+            action="player.update_skills",
+            entity_type="player_profile",
+            entity_id=str(profile.id),
+            after_data={"skill_ratings": merged},
             ip_address=meta.get("ip_address"),
             user_agent=meta.get("user_agent"),
         )

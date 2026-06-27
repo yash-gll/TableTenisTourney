@@ -40,6 +40,7 @@ def to_profile_out(user: User) -> PlayerProfileOut:
         current_rating=profile.current_rating,
         highest_rating=profile.highest_rating,
         bio=profile.bio,
+        skill_ratings=profile.skill_ratings or {},
         email_verified=user.is_verified,
         created_at=user.created_at,
     )

@@ -24,8 +24,21 @@ export interface PlayerProfile {
   current_rating: number;
   highest_rating: number;
   bio: string | null;
+  skill_ratings: Record<string, number>;
   email_verified: boolean;
   created_at: string;
+}
+
+export interface SkillItem {
+  key: string;
+  label: string;
+  value: number | null;
+}
+
+export interface PlayerSkills {
+  player_id: string;
+  display_name: string;
+  skills: SkillItem[];
 }
 
 export interface AdminPlayer {

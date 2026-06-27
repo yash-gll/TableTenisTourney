@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { AppShell } from "../components/AppShell";
 import { Avatar } from "../components/Avatar";
+import { SkillsEditor } from "../components/SkillsEditor";
 import { Button, Card, StatusBadge } from "../components/ui";
 import { api } from "../lib/api";
 import type { AdminPlayer, ApprovalStatus } from "../lib/types";
@@ -12,6 +13,7 @@ const FILTERS: ApprovalStatus[] = ["PENDING", "APPROVED", "REJECTED", "SUSPENDED
 export function AdminPendingPlayers() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState<ApprovalStatus>("PENDING");
+  const [editingSkills, setEditingSkills] = useState<AdminPlayer | null>(null);
 
   const { data: players, isLoading } = useQuery({
     queryKey: ["admin-players", filter],
@@ -106,12 +108,27 @@ export function AdminPendingPlayers() {
                       Restore
                     </Button>
                   )}
+                  <Button variant="secondary" onClick={() => setEditingSkills(p)}>
+                    Skills
+                  </Button>
                 </div>
               </Card>
             ))}
           </div>
         )}
       </div>
+
+      {editingSkills && (
+        <SkillsEditor
+          playerId={editingSkills.player_id}
+          playerName={editingSkills.display_name}
+          onClose={() => setEditingSkills(null)}
+          onSaved={() => {
+            queryClient.invalidateQueries({ queryKey: ["skills", editingSkills.player_id] });
+            setEditingSkills(null);
+          }}
+        />
+      )}
     </AppShell>
   );
 }
