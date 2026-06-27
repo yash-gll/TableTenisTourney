@@ -8,12 +8,24 @@ from sqlalchemy.orm import Session
 
 from app.core import errors
 from app.db.models.enums import AuditSeverity, TournamentStatus, TournamentVisibility
+from app.db.models.team_member import TeamMember
 from app.db.models.tournament import Tournament
 from app.db.models.tournament_result import TournamentResult
 from app.db.models.user import User
 from app.domain import tournament_state
 from app.schemas.tournament import TournamentCreate, TournamentUpdate
 from app.services.audit_service import AuditService
+
+# Tournaments a player sees in their list: started by the admin (schedule
+# generated) and still active. Finalized ones live in History.
+PLAYER_VISIBLE_STATES = {
+    TournamentStatus.SCHEDULED,
+    TournamentStatus.GROUP_IN_PROGRESS,
+    TournamentStatus.GROUP_COMPLETE,
+    TournamentStatus.QUALIFIERS_IN_PROGRESS,
+    TournamentStatus.COMPLETED,
+    TournamentStatus.PAUSED,
+}
 
 
 def _slugify(name: str) -> str:
@@ -44,8 +56,22 @@ class TournamentService:
     def list_visible(self, *, is_admin: bool) -> list[Tournament]:
         stmt = select(Tournament).order_by(Tournament.created_at.desc())
         if not is_admin:
-            # Guests/players only see public tournaments in listings.
+            # Guests only see public tournaments in listings.
             stmt = stmt.where(Tournament.visibility == TournamentVisibility.PUBLIC)
+        return list(self.db.execute(stmt).scalars())
+
+    def list_for_player(self, player_profile_id: uuid.UUID) -> list[Tournament]:
+        """Started, still-active tournaments the player is a participant in."""
+        stmt = (
+            select(Tournament)
+            .join(TeamMember, TeamMember.tournament_id == Tournament.id)
+            .where(
+                TeamMember.player_id == player_profile_id,
+                Tournament.status.in_(PLAYER_VISIBLE_STATES),
+            )
+            .distinct()
+            .order_by(Tournament.created_at.desc())
+        )
         return list(self.db.execute(stmt).scalars())
 
     # -- writes ------------------------------------------------------------

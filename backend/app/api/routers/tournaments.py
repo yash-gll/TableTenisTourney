@@ -25,7 +25,14 @@ def list_tournaments(
     viewer: User | None = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ) -> list[TournamentOut]:
-    items = TournamentService(db).list_visible(is_admin=is_admin_user(viewer))
+    service = TournamentService(db)
+    if is_admin_user(viewer):
+        items = service.list_visible(is_admin=True)
+    elif viewer is not None and viewer.profile is not None:
+        # Players see only started tournaments they participate in.
+        items = service.list_for_player(viewer.profile.id)
+    else:
+        items = service.list_visible(is_admin=False)
     return [to_tournament_out(t) for t in items]
 
 

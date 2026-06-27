@@ -37,7 +37,9 @@ export function TournamentList() {
         ) : !data || data.length === 0 ? (
           <Card>
             <p className="text-sm text-slate-500">
-              {isAdmin ? "No tournaments yet. Create your first one." : "No tournaments to show yet."}
+              {isAdmin
+                ? "No tournaments yet. Create your first one."
+                : "You're not in any active tournaments yet. They'll appear here once an admin starts one you're in."}
             </p>
           </Card>
         ) : (

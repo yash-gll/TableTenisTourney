@@ -1,8 +1,40 @@
-from tests.conftest import create_tournament
+from tests.conftest import create_tournament, setup_closed_tournament
 
 
 def _auth(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
+
+
+def _player_token(client, email: str) -> str:
+    resp = client.post("/api/v1/auth/login", json={"email": email, "password": "playerpass1"})
+    assert resp.status_code == 200, resp.text
+    return resp.json()["access_token"]
+
+
+def test_player_sees_only_started_tournaments_they_are_in(client, db, admin_token):
+    # Tournament A: player t2_0_0 is a participant.
+    a = setup_closed_tournament(client, db, admin_token, 2)
+    player_email = "t2_0_0@example.com"
+    ptoken = _player_token(client, player_email)
+
+    # Not started yet (REGISTRATION_CLOSED) -> not visible to the player.
+    assert client.get("/api/v1/tournaments", headers=_auth(ptoken)).json() == []
+
+    # Admin starts it (generates schedule).
+    client.post(f"/api/v1/tournaments/{a['tournament_id']}/schedule/generate", headers=_auth(admin_token))
+    visible = client.get("/api/v1/tournaments", headers=_auth(ptoken)).json()
+    assert [t["id"] for t in visible] == [a["tournament_id"]]
+
+    # Tournament B (different players), started, but the player is NOT in it.
+    b = setup_closed_tournament(client, db, admin_token, 3)
+    client.post(f"/api/v1/tournaments/{b['tournament_id']}/schedule/generate", headers=_auth(admin_token))
+    visible_ids = {t["id"] for t in client.get("/api/v1/tournaments", headers=_auth(ptoken)).json()}
+    assert a["tournament_id"] in visible_ids
+    assert b["tournament_id"] not in visible_ids
+
+    # Admin still sees everything.
+    admin_ids = {t["id"] for t in client.get("/api/v1/tournaments", headers=_auth(admin_token)).json()}
+    assert {a["tournament_id"], b["tournament_id"]} <= admin_ids
 
 
 def test_create_and_list(client, admin_token):
