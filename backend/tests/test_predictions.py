@@ -44,7 +44,8 @@ def test_predict_and_grade_on_completion(client, db, admin_token):
 
     board = client.get(f"/api/v1/tournaments/{tid}/predictions/leaderboard").json()
     assert board[0]["display_name"] == "Predictor"
-    assert board[0]["points"] == 1 and board[0]["correct"] == 1 and board[0]["total"] == 1
+    # Even-odds match (both teams 1000) → 100/0.5 = 200 points for a correct call.
+    assert board[0]["points"] == 200 and board[0]["correct"] == 1 and board[0]["total"] == 1
 
 
 def test_pick_is_locked_once_made(client, db, admin_token):

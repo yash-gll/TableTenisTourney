@@ -23,8 +23,9 @@ export function PredictionLeaderboard({
 
   return (
     <Card className="p-0">
-      <div className="border-b border-slate-100 px-4 py-2 text-sm font-semibold">
-        🔮 Prediction leaderboard
+      <div className="border-b border-slate-100 px-4 py-2">
+        <div className="text-sm font-semibold">🔮 Prediction leaderboard</div>
+        <div className="text-xs text-slate-400">Calling upsets scores more — points × correct/total</div>
       </div>
       <ul className="divide-y divide-slate-100">
         {data.map((r, i) => (
