@@ -2,9 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useParams } from "react-router-dom";
 
 import { AppShell } from "../components/AppShell";
+import { Avatar } from "../components/Avatar";
 import { Card } from "../components/ui";
 import { api } from "../lib/api";
-import type { HistoryDetail, HistoryItem } from "../lib/types";
+import type { HistoryDetail, HistoryItem, Team } from "../lib/types";
 
 interface HistoryStanding {
   rank: number;
@@ -19,9 +20,15 @@ interface HistoryBracketMatch {
   team_b: string | null;
   team_a_score: number | null;
   team_b_score: number | null;
+  winner_team_id: string | null;
 }
 
 const MEDAL = ["", "🥇", "🥈", "🥉", "4th"];
+
+function membersLabel(team: Team | undefined): string {
+  if (!team) return "";
+  return team.members.map((m) => m.display_name).join(" & ");
+}
 
 export function HistoryList() {
   const { data, isLoading } = useQuery({
@@ -70,6 +77,13 @@ export function HistoryDetailPage() {
     queryKey: ["history", id, "bracket"],
     queryFn: () => api<{ matches: HistoryBracketMatch[] }>(`/history/tournaments/${id}/bracket`),
   });
+  const { data: teams } = useQuery({
+    queryKey: ["teams", id],
+    queryFn: () => api<Team[]>(`/tournaments/${id}/teams`),
+  });
+
+  const teamById = new Map((teams ?? []).map((t) => [t.id, t]));
+  const teamByName = new Map((teams ?? []).map((t) => [t.name, t]));
 
   if (!detail) {
     return (
@@ -91,14 +105,37 @@ export function HistoryDetailPage() {
         {detail.placements.length > 0 && (
           <Card>
             <h3 className="mb-2 text-sm font-semibold">Placements</h3>
-            <ul className="space-y-1 text-sm">
+            <ul className="space-y-2 text-sm">
               {detail.placements.map((p) => (
-                <li key={p.team_id}>
-                  {MEDAL[p.place] ?? `${p.place}th`} {p.team_name}
+                <li key={p.team_id} className="flex items-center gap-2">
+                  <span className="w-6 shrink-0">{MEDAL[p.place] ?? `${p.place}th`}</span>
+                  <div>
+                    <div className={p.place === 1 ? "font-semibold" : ""}>{p.team_name}</div>
+                    <div className="text-xs text-slate-500">{membersLabel(teamById.get(p.team_id))}</div>
+                  </div>
                 </li>
               ))}
             </ul>
           </Card>
+        )}
+
+        {teams && teams.length > 0 && (
+          <div>
+            <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
+              Participants ({teams.length} teams)
+            </h3>
+            <div className="space-y-2">
+              {teams.map((t) => (
+                <Card key={t.id} className="flex items-center gap-3">
+                  <Avatar name={t.name} size={36} />
+                  <div className="min-w-0">
+                    <div className="font-medium">{t.name}</div>
+                    <div className="text-sm text-slate-500">{membersLabel(t)}</div>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          </div>
         )}
 
         {lb && lb.standings.length > 0 && (
@@ -142,14 +179,33 @@ export function HistoryDetailPage() {
               Bracket
             </h3>
             <div className="space-y-2">
-              {bracket.matches.map((m, i) => (
-                <Card key={i} className="flex items-center justify-between text-sm">
-                  <span className="text-xs font-medium uppercase text-slate-400">{m.stage}</span>
-                  <span>
-                    {m.team_a ?? "—"} {m.team_a_score}–{m.team_b_score} {m.team_b ?? "—"}
-                  </span>
-                </Card>
-              ))}
+              {bracket.matches.map((m, i) => {
+                const winnerName = m.winner_team_id
+                  ? teamById.get(m.winner_team_id)?.name
+                  : null;
+                const row = (name: string | null, score: number | null) => (
+                  <div
+                    className={`flex items-center justify-between rounded-md px-2 py-1 ${
+                      winnerName && winnerName === name ? "bg-emerald-50 font-semibold" : ""
+                    }`}
+                  >
+                    <span className="truncate">
+                      {name ?? "—"}
+                      <span className="ml-2 text-xs font-normal text-slate-400">
+                        {membersLabel(name ? teamByName.get(name) : undefined)}
+                      </span>
+                    </span>
+                    <span className="tabular-nums">{score ?? ""}</span>
+                  </div>
+                );
+                return (
+                  <Card key={i} className="space-y-1">
+                    <div className="text-xs font-medium uppercase text-slate-400">{m.stage}</div>
+                    {row(m.team_a, m.team_a_score)}
+                    {row(m.team_b, m.team_b_score)}
+                  </Card>
+                );
+              })}
             </div>
           </div>
         )}

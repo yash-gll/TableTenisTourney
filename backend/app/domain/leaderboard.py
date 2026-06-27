@@ -94,8 +94,10 @@ def compute_standings(
     manual_rankings: dict[str, int] | None = None,
     group_complete: bool = False,
     qualify_count: int = 4,
+    display_names: dict[str, str] | None = None,
 ) -> LeaderboardResult:
     manual_rankings = manual_rankings or {}
+    display_names = display_names or {}
     seeds = {t.team_id: t.seed for t in teams}
     all_ids = {t.team_id for t in teams}
     overall = _aggregate(all_ids, results)
@@ -115,7 +117,7 @@ def compute_standings(
         group = primary[i:j]
         resolved, statuses = _resolve_group(group, results, overall, seeds, manual_rankings)
         if len(group) > 1:
-            explanation.append(_explain(group, statuses, key))
+            explanation.append(_explain(group, statuses, key, display_names))
         ordered.extend(resolved)
         i = j
 
@@ -226,7 +228,9 @@ def _all_statuses(
     return statuses
 
 
-def _explain(group: list[str], statuses: dict[str, str], key: tuple) -> str:
+def _explain(
+    group: list[str], statuses: dict[str, str], key: tuple, display_names: dict[str, str]
+) -> str:
     wins, diff = key
     method = statuses.get(group[0], "CLEAR")
     label = {
@@ -236,7 +240,8 @@ def _explain(group: list[str], statuses: dict[str, str], key: tuple) -> str:
         "MANUAL": "resolved by manual administrator ranking",
         "UNRESOLVED": "UNRESOLVED — needs manual resolution",
     }.get(method, "resolved")
-    return f"Teams [{', '.join(group)}] tied on {wins} wins / {diff:+d} diff — {label}."
+    labels = ", ".join(display_names.get(t, t) for t in group)
+    return f"{labels} tied on {wins} wins / {diff:+d} diff — {label}."
 
 
 def has_unresolved_top_tie(result: LeaderboardResult, qualify_count: int = 4) -> bool:

@@ -82,6 +82,7 @@ class LeaderboardService:
             loss_table_points=tournament.loss_table_points,
             manual_rankings=manual,
             group_complete=group_complete,
+            display_names=names,
         )
         return result, names, group_complete
 
