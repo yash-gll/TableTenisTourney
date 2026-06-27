@@ -1,9 +1,14 @@
 # 🏓 Table Tennis Tournament Platform
 
 A web application for running team-based table tennis tournaments. This repository
-currently implements **Phase 0 (Foundation)** and **Phase 1 (Authentication &
-Approval)** from the project plan. Tournament logic (teams, schedules, scoring,
-leaderboards, brackets, ratings) arrives in later phases.
+implements **Phase 0 (Foundation)**, **Phase 1 (Authentication & Approval)**, and
+**Phase 2 (Tournaments & Teams)** from the project plan. Scheduling, scoring,
+leaderboards, brackets, and ratings arrive in later phases.
+
+Phase 2 adds: tournament CRUD with a validated lifecycle **state machine**, and a
+mobile **team builder** — teams of exactly two approved players, with duplicate
+prevention, roster locking, and visibility-aware public reads. All rules are
+enforced server-side.
 
 ## Stack
 

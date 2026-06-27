@@ -125,3 +125,36 @@ def verify_user_directly(db: Session, email: str) -> None:
     user = db.query(User).filter(User.email == email.lower()).one()
     user.email_verified_at = datetime.now(tz=timezone.utc)
     db.commit()
+
+
+def make_approved_player(db: Session, email: str, name: str) -> str:
+    """Insert a verified, APPROVED player and return its player_profile id (str)."""
+    from app.db.models.player_profile import PlayerProfile
+
+    user = User(
+        email=email.lower(),
+        password_hash=hash_password("playerpass1"),
+        role=UserRole.PLAYER,
+        account_status=AccountStatus.ACTIVE,
+        email_verified_at=datetime.now(tz=timezone.utc),
+    )
+    db.add(user)
+    db.flush()
+    profile = PlayerProfile(
+        user_id=user.id,
+        display_name=name,
+        approval_status=ApprovalStatus.APPROVED,
+    )
+    db.add(profile)
+    db.commit()
+    return str(profile.id)
+
+
+def create_tournament(client: TestClient, admin_token: str, name: str = "Summer Cup") -> dict:
+    resp = client.post(
+        "/api/v1/tournaments",
+        json={"name": name},
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    assert resp.status_code == 201, resp.text
+    return resp.json()

@@ -80,3 +80,64 @@ def player_not_found() -> AppError:
 
 def reason_required() -> AppError:
     return AppError(status.HTTP_422_UNPROCESSABLE_ENTITY, "REASON_REQUIRED", "A reason is required.")
+
+
+# Tournaments / teams --------------------------------------------------------
+
+
+def tournament_not_found() -> AppError:
+    return AppError(status.HTTP_404_NOT_FOUND, "TOURNAMENT_NOT_FOUND", "Tournament not found.")
+
+
+def tournament_not_editable() -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT,
+        "TOURNAMENT_NOT_EDITABLE",
+        "The tournament can no longer be edited in its current state.",
+    )
+
+
+def invalid_transition(current: str, target: str) -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT,
+        "INVALID_TOURNAMENT_TRANSITION",
+        f"Cannot transition from {current} to {target}.",
+        {"current": current, "target": target},
+    )
+
+
+def team_not_found() -> AppError:
+    return AppError(status.HTTP_404_NOT_FOUND, "TEAM_NOT_FOUND", "Team not found.")
+
+
+def team_name_taken(name: str) -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT,
+        "TEAM_NAME_TAKEN",
+        "A team with that name already exists in this tournament.",
+        {"name": name},
+    )
+
+
+def team_already_full() -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT,
+        "TEAM_ALREADY_FULL",
+        "A team may have at most two players.",
+    )
+
+
+def player_not_approved() -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT,
+        "PLAYER_NOT_APPROVED",
+        "Only approved players can be added to a team.",
+    )
+
+
+def player_already_on_team() -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT,
+        "PLAYER_ALREADY_ON_TEAM",
+        "This player is already on a team in this tournament.",
+    )

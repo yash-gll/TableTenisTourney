@@ -9,6 +9,9 @@ import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
 import { ResetPassword } from "./pages/ResetPassword";
+import { TournamentCreate } from "./pages/TournamentCreate";
+import { TournamentDetail } from "./pages/TournamentDetail";
+import { TournamentList } from "./pages/TournamentList";
 import { VerifyEmail } from "./pages/VerifyEmail";
 
 function FullScreenMessage({ children }: { children: ReactNode }) {
@@ -52,6 +55,30 @@ export function AppRoutes() {
         element={
           <RequireAdmin>
             <AdminPendingPlayers />
+          </RequireAdmin>
+        }
+      />
+      <Route
+        path="/tournaments"
+        element={
+          <RequireAdmin>
+            <TournamentList />
+          </RequireAdmin>
+        }
+      />
+      <Route
+        path="/tournaments/new"
+        element={
+          <RequireAdmin>
+            <TournamentCreate />
+          </RequireAdmin>
+        }
+      />
+      <Route
+        path="/tournaments/:id"
+        element={
+          <RequireAdmin>
+            <TournamentDetail />
           </RequireAdmin>
         }
       />

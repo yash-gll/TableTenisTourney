@@ -1,9 +1,14 @@
 """Helpers that build response schemas from joined User + PlayerProfile models."""
 
 from app.db.models.player_profile import PlayerProfile
+from app.db.models.team import Team
+from app.db.models.tournament import Tournament
 from app.db.models.user import User
+from app.domain import tournament_state
 from app.schemas.admin import AdminPlayerOut
 from app.schemas.player import MeResponse, PlayerProfileOut
+from app.schemas.team import TeamMemberOut, TeamOut
+from app.schemas.tournament import TournamentOut
 
 
 def to_me(user: User) -> MeResponse:
@@ -35,6 +40,54 @@ def to_profile_out(user: User) -> PlayerProfileOut:
         bio=profile.bio,
         email_verified=user.is_verified,
         created_at=user.created_at,
+    )
+
+
+def to_tournament_out(t: Tournament) -> TournamentOut:
+    return TournamentOut(
+        id=t.id,
+        name=t.name,
+        slug=t.slug,
+        description=t.description,
+        location=t.location,
+        start_at=t.start_at,
+        end_at=t.end_at,
+        status=t.status,
+        visibility=t.visibility,
+        target_points=t.target_points,
+        win_by_two=t.win_by_two,
+        maximum_points=t.maximum_points,
+        win_table_points=t.win_table_points,
+        loss_table_points=t.loss_table_points,
+        version=t.version,
+        team_count=len(t.teams),
+        is_editable=tournament_state.is_editable(t.status),
+        created_at=t.created_at,
+    )
+
+
+def to_team_out(team: Team) -> TeamOut:
+    members = [
+        TeamMemberOut(
+            player_id=m.player_id,
+            display_name=m.player.display_name,
+            current_rating=m.player.current_rating,
+            member_order=m.member_order,
+        )
+        for m in team.members
+    ]
+    avg = (
+        round(sum(m.current_rating for m in members) / len(members), 1) if members else None
+    )
+    return TeamOut(
+        id=team.id,
+        tournament_id=team.tournament_id,
+        name=team.name,
+        logo_url=team.logo_url,
+        initial_seed=team.initial_seed,
+        members=members,
+        average_rating=avg,
+        is_complete=len(members) == 2,
     )
 
 

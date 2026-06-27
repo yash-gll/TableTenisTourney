@@ -24,6 +24,16 @@ function PlayersIcon({ active }: { active: boolean }) {
   );
 }
 
+function TrophyIcon({ active }: { active: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={active ? 2.4 : 1.8}>
+      <path d="M7 4h10v4a5 5 0 0 1-10 0V4z" strokeLinejoin="round" />
+      <path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3" strokeLinecap="round" />
+      <path d="M12 13v4M9 20h6M10 20v-1.5h4V20" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 interface Tab {
   to: string;
   label: string;
@@ -37,8 +47,15 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
 
   const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
   const tabs: Tab[] = [{ to: "/dashboard", label: "Profile", icon: ProfileIcon }];
-  if (isAdmin) tabs.push({ to: "/admin", label: "Players", icon: PlayersIcon });
+  if (isAdmin) {
+    tabs.push({ to: "/tournaments", label: "Tournaments", icon: TrophyIcon });
+    tabs.push({ to: "/admin", label: "Players", icon: PlayersIcon });
+  }
   const showBottomNav = tabs.length > 1;
+
+  // Highlight the Tournaments tab on nested tournament routes too.
+  const isActive = (to: string) =>
+    location.pathname === to || (to === "/tournaments" && location.pathname.startsWith("/tournaments"));
 
   const onLogout = async () => {
     await logout();
@@ -73,7 +90,7 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
         >
           <div className="mx-auto flex max-w-3xl">
             {tabs.map((tab) => {
-              const active = location.pathname === tab.to;
+              const active = isActive(tab.to);
               return (
                 <Link
                   key={tab.to}

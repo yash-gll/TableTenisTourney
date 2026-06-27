@@ -42,6 +42,31 @@ def get_current_user(
     return user
 
 
+def get_optional_user(
+    creds: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    db: Session = Depends(get_db),
+) -> User | None:
+    """Like get_current_user but returns None instead of raising — for public
+    endpoints that reveal more to authenticated admins."""
+    if creds is None:
+        return None
+    payload = decode_token(creds.credentials)
+    if not payload or payload.get("type") != "access":
+        return None
+    try:
+        user_id = uuid.UUID(str(payload.get("sub")))
+    except (ValueError, TypeError):
+        return None
+    user = db.get(User, user_id)
+    if user is None or user.account_status == AccountStatus.DISABLED:
+        return None
+    return user
+
+
+def is_admin_user(user: User | None) -> bool:
+    return user is not None and user.role in (UserRole.ADMIN, UserRole.SUPER_ADMIN)
+
+
 def require_admin(user: User = Depends(get_current_user)) -> User:
     if user.role not in (UserRole.ADMIN, UserRole.SUPER_ADMIN):
         raise _forbidden()
