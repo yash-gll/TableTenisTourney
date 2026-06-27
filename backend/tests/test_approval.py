@@ -29,6 +29,21 @@ def test_approve_sets_status_and_writes_audit(client, db, admin_token):
     assert audit[0].entity_id == player_id
 
 
+def test_approve_verifies_email_so_user_can_login(client, db, admin_token):
+    # Register (unverified), then approve → should become verified + able to log in.
+    register_player(client, email="needsverify@example.com", display_name="Needs Verify")
+    player_id = _pending_player_id(client, admin_token)
+    client.post(
+        f"/api/v1/admin/players/{player_id}/approve",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    resp = client.post(
+        "/api/v1/auth/login",
+        json={"email": "needsverify@example.com", "password": "playerpass1"},
+    )
+    assert resp.status_code == 200  # verified by the approval, no email step needed
+
+
 def test_reject_requires_reason(client, admin_token):
     register_player(client)
     player_id = _pending_player_id(client, admin_token)

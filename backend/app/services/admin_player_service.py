@@ -62,10 +62,15 @@ class AdminPlayerService:
             profile.approved_by = actor.id
             profile.approved_at = _now()
 
-        if new_account_status is not None:
+        if new_account_status is not None or new_status == ApprovalStatus.APPROVED:
             user = self.db.get(User, profile.user_id)
             if user is not None:
-                user.account_status = new_account_status
+                if new_account_status is not None:
+                    user.account_status = new_account_status
+                # Approving (or restoring) also verifies the email so the player
+                # can log in — useful when there's no email service.
+                if new_status == ApprovalStatus.APPROVED and user.email_verified_at is None:
+                    user.email_verified_at = _now()
 
         self.audit.record(
             actor_user_id=actor.id,
