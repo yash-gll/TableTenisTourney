@@ -56,8 +56,8 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
 
   const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
   const tabs: Tab[] = [{ to: "/dashboard", label: "Profile", icon: ProfileIcon }];
+  tabs.push({ to: "/tournaments", label: "Tournaments", icon: TrophyIcon });
   if (isAdmin) {
-    tabs.push({ to: "/tournaments", label: "Tournaments", icon: TrophyIcon });
     tabs.push({ to: "/admin", label: "Players", icon: PlayersIcon });
   }
   tabs.push({ to: "/history", label: "History", icon: HistoryIcon });

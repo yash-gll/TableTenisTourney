@@ -62,9 +62,9 @@ export function AppRoutes() {
       <Route
         path="/tournaments"
         element={
-          <RequireAdmin>
+          <RequireAuth>
             <TournamentList />
-          </RequireAdmin>
+          </RequireAuth>
         }
       />
       <Route
@@ -78,9 +78,9 @@ export function AppRoutes() {
       <Route
         path="/tournaments/:id"
         element={
-          <RequireAdmin>
+          <RequireAuth>
             <TournamentDetail />
-          </RequireAdmin>
+          </RequireAuth>
         }
       />
       <Route

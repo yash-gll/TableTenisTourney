@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { AppShell } from "../components/AppShell";
 import { Button, Card } from "../components/ui";
 import { api } from "../lib/api";
+import { useAuth } from "../lib/auth";
 import type { Tournament } from "../lib/types";
 
 const STATUS_STYLE: Record<string, string> = {
@@ -15,6 +16,8 @@ const STATUS_STYLE: Record<string, string> = {
 
 export function TournamentList() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
   const { data, isLoading } = useQuery({
     queryKey: ["tournaments"],
     queryFn: () => api<Tournament[]>("/tournaments"),
@@ -23,15 +26,19 @@ export function TournamentList() {
   return (
     <AppShell title="Tournaments">
       <div className="space-y-4">
-        <Button className="w-full" onClick={() => navigate("/tournaments/new")}>
-          + New tournament
-        </Button>
+        {isAdmin && (
+          <Button className="w-full" onClick={() => navigate("/tournaments/new")}>
+            + New tournament
+          </Button>
+        )}
 
         {isLoading ? (
           <p className="text-slate-500">Loading…</p>
         ) : !data || data.length === 0 ? (
           <Card>
-            <p className="text-sm text-slate-500">No tournaments yet. Create your first one.</p>
+            <p className="text-sm text-slate-500">
+              {isAdmin ? "No tournaments yet. Create your first one." : "No tournaments to show yet."}
+            </p>
           </Card>
         ) : (
           <div className="space-y-3">

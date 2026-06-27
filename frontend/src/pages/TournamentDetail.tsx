@@ -10,6 +10,7 @@ import { MatchList } from "../components/MatchList";
 import { PlayerPicker } from "../components/PlayerPicker";
 import { Button, Card, Input } from "../components/ui";
 import { ApiError, api } from "../lib/api";
+import { useAuth } from "../lib/auth";
 import type {
   Bracket,
   ExplanationResponse,
@@ -49,6 +50,8 @@ export function TournamentDetail() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
   const [pickingTeam, setPickingTeam] = useState<string | null>(null);
   const [newTeamName, setNewTeamName] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -178,48 +181,50 @@ export function TournamentDetail() {
             </span>
           </div>
 
-          <div className="mt-4 flex flex-wrap gap-2">
-            {manualActions(t.status).map((a) => (
-              <Button
-                key={a.target}
-                variant={a.secondary ? "secondary" : "primary"}
-                className="flex-1"
-                disabled={transition.isPending}
-                onClick={() => transition.mutate(a.target)}
-              >
-                {a.label}
-              </Button>
-            ))}
-            {t.status === "REGISTRATION_CLOSED" && (
-              <Button className="flex-1" disabled={generateSchedule.isPending} onClick={() => generateSchedule.mutate()}>
-                Generate schedule
-              </Button>
-            )}
-            {t.status === "GROUP_COMPLETE" && (
-              <Button className="flex-1" disabled={generateBracket.isPending} onClick={() => generateBracket.mutate()}>
-                Generate bracket
-              </Button>
-            )}
-            {t.status === "COMPLETED" && (
-              <Button className="flex-1" disabled={finalize.isPending} onClick={() => finalize.mutate()}>
-                Finalize
-              </Button>
-            )}
-            {t.status === "FINALIZED" && (
-              <Button
-                variant="secondary"
-                className="flex-1"
-                disabled={reopen.isPending}
-                onClick={() => {
-                  if (window.confirm("Reopen this finalized tournament? Placement bonuses will be reverted.")) {
-                    reopen.mutate();
-                  }
-                }}
-              >
-                Reopen
-              </Button>
-            )}
-          </div>
+          {isAdmin && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {manualActions(t.status).map((a) => (
+                <Button
+                  key={a.target}
+                  variant={a.secondary ? "secondary" : "primary"}
+                  className="flex-1"
+                  disabled={transition.isPending}
+                  onClick={() => transition.mutate(a.target)}
+                >
+                  {a.label}
+                </Button>
+              ))}
+              {t.status === "REGISTRATION_CLOSED" && (
+                <Button className="flex-1" disabled={generateSchedule.isPending} onClick={() => generateSchedule.mutate()}>
+                  Generate schedule
+                </Button>
+              )}
+              {t.status === "GROUP_COMPLETE" && (
+                <Button className="flex-1" disabled={generateBracket.isPending} onClick={() => generateBracket.mutate()}>
+                  Generate bracket
+                </Button>
+              )}
+              {t.status === "COMPLETED" && (
+                <Button className="flex-1" disabled={finalize.isPending} onClick={() => finalize.mutate()}>
+                  Finalize
+                </Button>
+              )}
+              {t.status === "FINALIZED" && (
+                <Button
+                  variant="secondary"
+                  className="flex-1"
+                  disabled={reopen.isPending}
+                  onClick={() => {
+                    if (window.confirm("Reopen this finalized tournament? Placement bonuses will be reverted.")) {
+                      reopen.mutate();
+                    }
+                  }}
+                >
+                  Reopen
+                </Button>
+              )}
+            </div>
+          )}
           {t.status === "FINALIZED" && (
             <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">
               Finalized — read-only. Results are in History.
@@ -247,7 +252,7 @@ export function TournamentDetail() {
         {activeTab === "teams" && (
           <TeamsSection
             teams={teams ?? []}
-            editable={editable}
+            editable={editable && isAdmin}
             newTeamName={newTeamName}
             setNewTeamName={setNewTeamName}
             createTeam={createTeam}
@@ -267,7 +272,7 @@ export function TournamentDetail() {
           <MatchList
             matches={matches ?? []}
             targetPoints={t.target_points}
-            editable={t.status !== "COMPLETED" && t.status !== "FINALIZED"}
+            editable={isAdmin && t.status !== "COMPLETED" && t.status !== "FINALIZED"}
             onChanged={invalidate}
           />
         )}
