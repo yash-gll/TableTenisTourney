@@ -109,8 +109,11 @@ not this endpoint, and return `409 INVALID_TOURNAMENT_TRANSITION`.
 
 ## Teams
 
-All writes require **ADMIN** and the tournament must be **editable**
-(`DRAFT`/`REGISTRATION_OPEN`). Member payloads are public-safe (no emails).
+All writes require **ADMIN**. Team creation, deletion, roster changes, and seed
+edits require the tournament to be **editable** (`DRAFT`/`REGISTRATION_OPEN`).
+**Team name and logo can be edited any time except after the tournament is
+finalized/cancelled/archived** (renaming mid-tournament is allowed). Member
+payloads are public-safe (no emails).
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|

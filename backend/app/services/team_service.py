@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core import errors
-from app.db.models.enums import ApprovalStatus
+from app.db.models.enums import ApprovalStatus, TournamentStatus
 from app.db.models.player_profile import PlayerProfile
 from app.db.models.team import Team
 from app.db.models.team_member import TeamMember
@@ -14,6 +14,14 @@ from app.domain import tournament_state
 from app.services.audit_service import AuditService
 
 MAX_TEAM_SIZE = 2
+
+# Team name/logo (cosmetic) may be edited any time before the tournament is
+# closed out; roster and seed changes still lock when the tournament starts.
+NAME_LOCKED_STATES = {
+    TournamentStatus.FINALIZED,
+    TournamentStatus.CANCELLED,
+    TournamentStatus.ARCHIVED,
+}
 
 
 class TeamService:
@@ -91,18 +99,27 @@ class TeamService:
     def update_team(self, *, tournament_id: uuid.UUID, team_id: uuid.UUID, name: str | None,
                     initial_seed: int | None, logo_url: str | None, actor: User, meta: dict) -> Team:
         tournament = self._get_tournament(tournament_id)
-        self._require_editable(tournament)
         team = self._get_team(tournament_id, team_id)
 
+        name_logo_allowed = tournament.status not in NAME_LOCKED_STATES
+        roster_editable = tournament_state.is_editable(tournament.status)
+
         if name is not None:
+            if not name_logo_allowed:
+                raise errors.tournament_not_editable()
             name = name.strip()
             if name != team.name and self._name_exists(tournament_id, name, team_id):
                 raise errors.team_name_taken(name)
             team.name = name
-        if initial_seed is not None:
-            team.initial_seed = initial_seed
         if logo_url is not None:
+            if not name_logo_allowed:
+                raise errors.tournament_not_editable()
             team.logo_url = logo_url
+        # Seed feeds ranking tie-breaks, so it's only editable before the start.
+        if initial_seed is not None:
+            if not roster_editable:
+                raise errors.tournament_not_editable()
+            team.initial_seed = initial_seed
 
         self.audit.record(
             actor_user_id=actor.id,

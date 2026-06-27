@@ -1,4 +1,9 @@
-from tests.conftest import create_tournament, make_approved_player, register_player
+from tests.conftest import (
+    create_tournament,
+    make_approved_player,
+    register_player,
+    setup_closed_tournament,
+)
 
 
 def _auth(token: str) -> dict:
@@ -112,6 +117,31 @@ def test_roster_locked_after_registration_closed(client, admin_token):
     resp = _new_team(client, admin_token, tid, "TooLate")
     assert resp.status_code == 409
     assert resp.json()["error"]["code"] == "TOURNAMENT_NOT_EDITABLE"
+
+
+def test_rename_team_allowed_during_live_tournament(client, db, admin_token):
+    setup = setup_closed_tournament(client, db, admin_token, 2)
+    tid = setup["tournament_id"]
+    team_id = setup["team_ids"][0]
+    # Start the tournament (schedule generated -> SCHEDULED, rosters locked).
+    client.post(f"/api/v1/tournaments/{tid}/schedule/generate", headers=_auth(admin_token))
+
+    # Renaming is allowed mid-tournament...
+    rename = client.patch(
+        f"/api/v1/tournaments/{tid}/teams/{team_id}",
+        json={"name": "Renamed Live"}, headers=_auth(admin_token),
+    )
+    assert rename.status_code == 200
+    assert rename.json()["name"] == "Renamed Live"
+
+    # ...but roster changes are still locked.
+    pid = make_approved_player(db, "latecomer@example.com", "Late Comer")
+    add = client.post(
+        f"/api/v1/tournaments/{tid}/teams/{team_id}/members",
+        json={"player_id": pid}, headers=_auth(admin_token),
+    )
+    assert add.status_code == 409
+    assert add.json()["error"]["code"] == "TOURNAMENT_NOT_EDITABLE"
 
 
 def test_team_create_requires_admin(client, db, admin_token):

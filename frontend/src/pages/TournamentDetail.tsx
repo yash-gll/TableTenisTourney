@@ -253,10 +253,17 @@ export function TournamentDetail() {
           <TeamsSection
             teams={teams ?? []}
             editable={editable && isAdmin}
+            canRename={isAdmin && !["FINALIZED", "CANCELLED", "ARCHIVED"].includes(t.status)}
             newTeamName={newTeamName}
             setNewTeamName={setNewTeamName}
             createTeam={createTeam}
             onPick={setPickingTeam}
+            renameTeam={(teamId, current) => {
+              const name = window.prompt("New team name", current)?.trim();
+              if (name && name !== current) {
+                run(() => api(`/tournaments/${id}/teams/${teamId}`, { method: "PATCH", body: { name } }))();
+              }
+            }}
             removeMember={(teamId, playerId) =>
               run(() =>
                 api(`/tournaments/${id}/teams/${teamId}/members/${playerId}`, { method: "DELETE" }),
@@ -305,19 +312,23 @@ export function TournamentDetail() {
 function TeamsSection({
   teams,
   editable,
+  canRename,
   newTeamName,
   setNewTeamName,
   createTeam,
   onPick,
+  renameTeam,
   removeMember,
   deleteTeam,
 }: {
   teams: Team[];
   editable: boolean;
+  canRename: boolean;
   newTeamName: string;
   setNewTeamName: (v: string) => void;
   createTeam: () => void;
   onPick: (teamId: string) => void;
+  renameTeam: (teamId: string, currentName: string) => void;
   removeMember: (teamId: string, playerId: string) => void;
   deleteTeam: (teamId: string) => void;
 }) {
@@ -334,9 +345,19 @@ function TeamsSection({
                 <span className="ml-2 text-xs font-normal text-amber-600">{team.members.length}/2</span>
               )}
             </div>
-            {team.average_rating != null && (
-              <span className="text-xs text-slate-500">avg {team.average_rating}</span>
-            )}
+            <div className="flex items-center gap-2">
+              {team.average_rating != null && (
+                <span className="text-xs text-slate-500">avg {team.average_rating}</span>
+              )}
+              {canRename && (
+                <button
+                  onClick={() => renameTeam(team.id, team.name)}
+                  className="rounded-md px-2 py-1 text-xs font-medium text-indigo-600 active:bg-indigo-50"
+                >
+                  Rename
+                </button>
+              )}
+            </div>
           </div>
           <div className="space-y-2">
             {team.members.map((m) => (
