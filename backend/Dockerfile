@@ -14,5 +14,6 @@ COPY . .
 
 EXPOSE 8000
 
-# Apply migrations, then serve.
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+# Serve on $PORT (Cloud Run injects PORT=8080); default 8000 locally.
+# Migrations are run as a separate step (see DEPLOY.md), not on every cold start.
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

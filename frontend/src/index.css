@@ -2,6 +2,24 @@
 @tailwind components;
 @tailwind utilities;
 
+html,
+body,
+#root {
+  height: 100%;
+}
+
 body {
   @apply bg-slate-50 text-slate-900 antialiased;
+  /* Respect device safe areas (notch / home indicator) when installed. */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+}
+
+/* Prevent iOS auto-zoom on focus by keeping inputs >= 16px. */
+input,
+textarea,
+select,
+button {
+  font-size: 16px;
 }

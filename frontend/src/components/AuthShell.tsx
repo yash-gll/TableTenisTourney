@@ -15,7 +15,7 @@ export function AuthShell({
   footer?: ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
+    <div className="flex min-h-dvh items-center justify-center p-4">
       <div className="w-full max-w-md">
         <Link to="/" className="mb-6 block text-center text-xl font-bold text-indigo-700">
           🏓 TT Tournaments

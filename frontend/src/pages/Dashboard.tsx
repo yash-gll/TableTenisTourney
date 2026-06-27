@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 
+import { AppShell } from "../components/AppShell";
 import { Avatar } from "../components/Avatar";
-import { TopBar } from "../components/TopBar";
 import { Button, Card, Input, StatusBadge } from "../components/ui";
 import { api } from "../lib/api";
 import type { PlayerProfile } from "../lib/types";
@@ -67,9 +67,8 @@ export function Dashboard() {
   });
 
   return (
-    <div>
-      <TopBar />
-      <main className="mx-auto max-w-3xl space-y-6 p-4">
+    <AppShell title="Profile">
+      <div className="space-y-6">
         {isLoading || !profile ? (
           <p className="text-slate-500">Loading…</p>
         ) : (
@@ -124,7 +123,7 @@ export function Dashboard() {
             </Card>
           </>
         )}
-      </main>
-    </div>
+      </div>
+    </AppShell>
   );
 }

@@ -24,7 +24,12 @@ intentionally simplified:
 | Email delivery | **No email service.** Verification & password-reset links are printed to the **backend logs**. You can also verify a user by setting `email_verified_at` directly in the DB. |
 | Profile pictures | **No image upload.** Avatars are rendered client-side from the player's initials. |
 | Auth tokens | **Bearer JWT in `localStorage`** (access + refresh via the `Authorization` header). No cookies/CSRF. |
+| UI | **Mobile-first, installable PWA** (service worker + manifest). Designed for phone use (~99% of traffic). |
 | Match rules (later phase) | Single doubles game to 11, `11-10` allowed (no win-by-two), admin builds all teams. |
+
+> **Firebase note:** Firebase is used only to **host the frontend** (see
+> [docs/DEPLOY.md](docs/DEPLOY.md)). Data stays in Postgres and email stays as
+> logged links — Firebase Storage / email can be added later if needed.
 
 ## Quick start (Docker)
 
@@ -112,7 +117,13 @@ docker-compose.yml
 docs/API.md   REST API reference for the implemented endpoints
 ```
 
+## Deployment (free tier)
+
+Backend on **Cloud Run**, Postgres on **Neon**, frontend PWA on **Firebase
+Hosting** — all free tier. Step-by-step guide: [docs/DEPLOY.md](docs/DEPLOY.md).
+
 ## Documentation
 
 - [docs/API.md](docs/API.md) — REST API reference (Phase 0 & 1)
+- [docs/DEPLOY.md](docs/DEPLOY.md) — free-tier deployment guide
 - The product/engineering specification lives in the project plan and is the source of truth.

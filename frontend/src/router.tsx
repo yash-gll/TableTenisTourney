@@ -12,7 +12,7 @@ import { ResetPassword } from "./pages/ResetPassword";
 import { VerifyEmail } from "./pages/VerifyEmail";
 
 function FullScreenMessage({ children }: { children: ReactNode }) {
-  return <div className="flex min-h-screen items-center justify-center text-slate-500">{children}</div>;
+  return <div className="flex min-h-dvh items-center justify-center text-slate-500">{children}</div>;
 }
 
 function RequireAuth({ children }: { children: ReactNode }) {
