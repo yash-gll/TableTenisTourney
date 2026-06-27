@@ -9,6 +9,7 @@ from app.db.models.rating_snapshot import RatingSnapshot
 from app.db.models.team import Team
 from app.db.models.team_member import TeamMember
 from app.db.models.tournament import Tournament
+from app.db.models.tournament_registration import TournamentRegistration
 from app.db.models.tournament_result import TournamentResult
 from app.db.models.user import User
 
@@ -27,4 +28,5 @@ __all__ = [
     "RatingSnapshot",
     "RatingConfig",
     "TournamentResult",
+    "TournamentRegistration",
 ]

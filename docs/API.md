@@ -127,6 +127,20 @@ payloads are public-safe (no emails).
 Team rule errors: `TEAM_NAME_TAKEN`, `TEAM_ALREADY_FULL`, `PLAYER_NOT_APPROVED`,
 `PLAYER_ALREADY_ON_TEAM`, `TOURNAMENT_NOT_EDITABLE`.
 
+## Registrations (self sign-up)
+
+Players request to join a tournament while it's `REGISTRATION_OPEN`; the admin
+reviews and still forms the teams. Open public tournaments also appear in a
+player's `/tournaments` list so they can find them.
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/tournaments/{id}/registrations` | approved player | Request to join (`{ preferred_partner_id?, note? }`). Only when `REGISTRATION_OPEN`. |
+| GET | `/tournaments/{id}/registrations/me` | approved player | Own status (or null). |
+| DELETE | `/tournaments/{id}/registrations/me` | approved player | Withdraw. |
+| GET | `/tournaments/{id}/registrations` | admin | All sign-ups (+ names). |
+| POST | `/tournaments/{id}/registrations/{player_id}/accept` \| `decline` \| `waitlist` | admin | Set status. |
+
 ## Schedule & matches
 
 | Method | Path | Auth | Description |

@@ -240,3 +240,26 @@ def tournament_not_finalized() -> AppError:
     return AppError(
         status.HTTP_409_CONFLICT, "TOURNAMENT_NOT_FINALIZED", "The tournament is not finalized."
     )
+
+
+# Registrations --------------------------------------------------------------
+
+
+def registration_not_open() -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT,
+        "REGISTRATION_NOT_OPEN",
+        "This tournament is not open for registration.",
+    )
+
+
+def already_registered() -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT, "ALREADY_REGISTERED", "You have already registered for this tournament."
+    )
+
+
+def registration_not_found() -> AppError:
+    return AppError(
+        status.HTTP_404_NOT_FOUND, "REGISTRATION_NOT_FOUND", "Registration not found."
+    )

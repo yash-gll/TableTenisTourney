@@ -8,6 +8,7 @@ import { BracketView } from "../components/BracketView";
 import { LeaderboardTable } from "../components/LeaderboardTable";
 import { MatchList } from "../components/MatchList";
 import { PlayerPicker } from "../components/PlayerPicker";
+import { AdminRegistrations, PlayerRegistration } from "../components/Registrations";
 import { Button, Card, Input } from "../components/ui";
 import { ApiError, api } from "../lib/api";
 import { useAuth } from "../lib/auth";
@@ -256,6 +257,9 @@ export function TournamentDetail() {
 
         {error && <p className="text-sm text-rose-600">{error}</p>}
 
+        {/* Players can request to join while registration is open. */}
+        {!isAdmin && t.status === "REGISTRATION_OPEN" && <PlayerRegistration tournamentId={id} />}
+
         {/* Tab bar */}
         <div className="flex gap-1 rounded-lg bg-slate-100 p-1">
           {tabs.filter((x) => x.show).map((x) => (
@@ -270,6 +274,8 @@ export function TournamentDetail() {
             </button>
           ))}
         </div>
+
+        {activeTab === "teams" && isAdmin && <AdminRegistrations tournamentId={id} />}
 
         {activeTab === "teams" && (
           <TeamsSection

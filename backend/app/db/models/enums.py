@@ -92,3 +92,11 @@ class RatingEventType(str, enum.Enum):
 class SnapshotType(str, enum.Enum):
     TOURNAMENT_START = "TOURNAMENT_START"
     TOURNAMENT_END = "TOURNAMENT_END"
+
+
+class RegistrationStatus(str, enum.Enum):
+    REQUESTED = "REQUESTED"
+    ACCEPTED = "ACCEPTED"
+    WAITLISTED = "WAITLISTED"
+    DECLINED = "DECLINED"
+    WITHDRAWN = "WITHDRAWN"

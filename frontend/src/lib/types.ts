@@ -77,6 +77,26 @@ export interface PlayerAchievements {
   achievements: Badge[];
 }
 
+export type RegistrationStatus =
+  | "REQUESTED"
+  | "ACCEPTED"
+  | "WAITLISTED"
+  | "DECLINED"
+  | "WITHDRAWN";
+
+export interface MyRegistration {
+  status: RegistrationStatus | null;
+}
+
+export interface RegistrationItem {
+  player_id: string;
+  display_name: string;
+  status: RegistrationStatus;
+  preferred_partner_id: string | null;
+  note: string | null;
+  created_at: string;
+}
+
 export interface AdminPlayer {
   player_id: string;
   user_id: string;

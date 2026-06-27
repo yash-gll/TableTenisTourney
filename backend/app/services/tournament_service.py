@@ -61,18 +61,26 @@ class TournamentService:
         return list(self.db.execute(stmt).scalars())
 
     def list_for_player(self, player_profile_id: uuid.UUID) -> list[Tournament]:
-        """Started, still-active tournaments the player is a participant in."""
-        stmt = (
+        """Tournaments a player should see: started ones they're in, plus public
+        tournaments currently open for registration (so they can request to join)."""
+        participating = (
             select(Tournament)
             .join(TeamMember, TeamMember.tournament_id == Tournament.id)
             .where(
                 TeamMember.player_id == player_profile_id,
                 Tournament.status.in_(PLAYER_VISIBLE_STATES),
             )
-            .distinct()
-            .order_by(Tournament.created_at.desc())
         )
-        return list(self.db.execute(stmt).scalars())
+        open_for_join = select(Tournament).where(
+            Tournament.status == TournamentStatus.REGISTRATION_OPEN,
+            Tournament.visibility == TournamentVisibility.PUBLIC,
+        )
+        by_id: dict[uuid.UUID, Tournament] = {}
+        for t in self.db.execute(participating).scalars():
+            by_id[t.id] = t
+        for t in self.db.execute(open_for_join).scalars():
+            by_id[t.id] = t
+        return sorted(by_id.values(), key=lambda t: t.created_at, reverse=True)
 
     # -- writes ------------------------------------------------------------
 
