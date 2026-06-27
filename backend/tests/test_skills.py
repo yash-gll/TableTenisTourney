@@ -5,6 +5,22 @@ def _auth(token: str) -> dict:
     return {"Authorization": f"Bearer {token}"}
 
 
+def test_approval_initializes_skills(client, db, admin_token):
+    from tests.conftest import register_player
+
+    register_player(client, email="appr@example.com", display_name="Appr Player")
+    pid = client.get(
+        "/api/v1/admin/players?approval_status=PENDING", headers=_auth(admin_token)
+    ).json()[0]["player_id"]
+    # Before approval: unrated.
+    before = client.get(f"/api/v1/players/{pid}/skills").json()
+    assert all(s["value"] is None for s in before["skills"])
+    # Approve → baseline 50 across the board.
+    client.post(f"/api/v1/admin/players/{pid}/approve", headers=_auth(admin_token))
+    after = client.get(f"/api/v1/players/{pid}/skills").json()
+    assert all(s["value"] == 50 for s in after["skills"])
+
+
 def test_skills_default_empty_and_public(client, db):
     pid = make_approved_player(db, "skilltest@example.com", "Skill Tester")
     resp = client.get(f"/api/v1/players/{pid}/skills")  # public, no auth

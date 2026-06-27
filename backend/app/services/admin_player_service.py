@@ -61,6 +61,9 @@ class AdminPlayerService:
         if new_status == ApprovalStatus.APPROVED:
             profile.approved_by = actor.id
             profile.approved_at = _now()
+            # Seed a baseline skill set on first approval (don't overwrite if set).
+            if not profile.skill_ratings:
+                profile.skill_ratings = skills_domain.default_ratings()
 
         if new_account_status is not None or new_status == ApprovalStatus.APPROVED:
             user = self.db.get(User, profile.user_id)

@@ -17,6 +17,12 @@ SKILL_ATTRIBUTES: list[tuple[str, str]] = [
 SKILL_KEYS: set[str] = {key for key, _ in SKILL_ATTRIBUTES}
 SKILL_MIN = 0
 SKILL_MAX = 100
+# Baseline assigned when a player is approved; admins tune from here.
+DEFAULT_SKILL = 50
+
+
+def default_ratings() -> dict[str, int]:
+    return {key: DEFAULT_SKILL for key, _ in SKILL_ATTRIBUTES}
 
 
 def labelled(stored: dict | None) -> list[dict]:
