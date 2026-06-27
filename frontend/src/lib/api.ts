@@ -1,4 +1,6 @@
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api/v1";
+// Strip any trailing slash(es) so VITE_API_URL="…/api/v1/" doesn't produce
+// double-slash request paths (which 404).
+const API_URL = (import.meta.env.VITE_API_URL ?? "http://localhost:8000/api/v1").replace(/\/+$/, "");
 
 const ACCESS_KEY = "tt_access";
 const REFRESH_KEY = "tt_refresh";
