@@ -99,3 +99,70 @@ export interface Team {
   average_rating: number | null;
   is_complete: boolean;
 }
+
+export type MatchStatus =
+  | "WAITING_FOR_TEAMS"
+  | "SCHEDULED"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "VOID";
+
+export type MatchStage = "GROUP" | "QF1" | "QF2" | "QF3" | "FINAL" | "TIEBREAKER";
+
+export interface Match {
+  id: string;
+  tournament_id: string;
+  stage: MatchStage;
+  round_number: number | null;
+  display_order: number | null;
+  court_name: string | null;
+  team_a_id: string | null;
+  team_b_id: string | null;
+  team_a_name: string | null;
+  team_b_name: string | null;
+  team_a_score: number | null;
+  team_b_score: number | null;
+  winner_team_id: string | null;
+  loser_team_id: string | null;
+  status: MatchStatus;
+  scheduled_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  version: number;
+}
+
+export interface Standing {
+  rank: number;
+  team_id: string;
+  team_name: string;
+  played: number;
+  wins: number;
+  losses: number;
+  table_points: number;
+  points_for: number;
+  points_against: number;
+  point_difference: number;
+  tie_status: string;
+  qualification_status: string;
+}
+
+export interface Leaderboard {
+  group_complete: boolean;
+  standings: Standing[];
+}
+
+export interface ExplanationResponse {
+  explanation: string[];
+}
+
+export interface Placement {
+  place: number;
+  team_id: string;
+  team_name: string;
+}
+
+export interface Bracket {
+  matches: Match[];
+  placements: Placement[];
+}

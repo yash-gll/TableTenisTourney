@@ -1,4 +1,4 @@
-# API Reference — Phases 0–2
+# API Reference — Phases 0–5
 
 Base path: `/api/v1`. All requests/responses are JSON. Authenticated endpoints
 expect `Authorization: Bearer <access_token>`.
@@ -102,6 +102,40 @@ All writes require **ADMIN** and the tournament must be **editable**
 
 Team rule errors: `TEAM_NAME_TAKEN`, `TEAM_ALREADY_FULL`, `PLAYER_NOT_APPROVED`,
 `PLAYER_ALREADY_ON_TEAM`, `TOURNAMENT_NOT_EDITABLE`.
+
+## Schedule & matches
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/tournaments/{id}/schedule/generate` | admin | Generate the single round-robin (requires `REGISTRATION_CLOSED`, ≥2 teams each with exactly 2 approved players). Idempotent. Moves status to `SCHEDULED`. |
+| GET | `/tournaments/{id}/matches` | public | List all matches (group + bracket). |
+| GET | `/matches/{match_id}` | public | One match. |
+| POST | `/matches/{match_id}/start` | admin | `SCHEDULED → IN_PROGRESS`. |
+| POST | `/matches/{match_id}/complete` | admin | `{ team_a_score, team_b_score, expected_version }`. Backend resolves the winner; bumps version; auto-completes the group when all done. |
+| POST | `/matches/{match_id}/correct` | admin | `{ team_a_score, team_b_score, expected_version, reason, reset_dependents? }`. Re-resolves winner; for bracket matches, propagates/reset downstream. |
+
+Optimistic locking: a stale `expected_version` returns `409 MATCH_VERSION_CONFLICT`
+with the latest version. Invalid scores return `422 INVALID_MATCH_SCORE`.
+
+## Leaderboard
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/tournaments/{id}/leaderboard` | public | Standings: wins → point-difference → head-to-head / mini-table → fallback. Top-four flagged `QUALIFIED` only once the group is complete. |
+| GET | `/tournaments/{id}/leaderboard/explanation` | public | Human-readable tie-break trace. |
+| POST | `/tournaments/{id}/leaderboard/resolve-tie` | admin | `{ ordering: [team_id…], reason }` — manual tie override. |
+
+## Bracket
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/tournaments/{id}/bracket/generate` | admin | Requires `GROUP_COMPLETE`, ≥4 teams, no unresolved top tie. Creates QF1/QF2 from ranks 1–4 and QF3/Final via dependencies. Moves status to `QUALIFIERS_IN_PROGRESS`. Idempotent. |
+| GET | `/tournaments/{id}/bracket` | public | Bracket matches + current placements. |
+| POST | `/tournaments/{id}/bracket/rebuild` | admin | Wipe and regenerate (critical, audited). |
+
+Dependency flow: QF1 winner → Final; QF1 loser → QF3; QF2 winner → QF3; QF3
+winner → Final. Placements: 1st Final winner, 2nd Final loser, 3rd QF3 loser,
+4th QF2 loser. Completing the Final moves the tournament to `COMPLETED`.
 
 ## Authorization model
 
