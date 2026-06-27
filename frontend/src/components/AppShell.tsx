@@ -97,6 +97,7 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
 
       {showBottomNav && (
         <nav
+          aria-label="Primary"
           className="fixed inset-x-0 bottom-0 z-10 border-t border-slate-200 bg-white"
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         >
@@ -107,6 +108,7 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
                 <Link
                   key={tab.to}
                   to={tab.to}
+                  aria-current={active ? "page" : undefined}
                   className={`flex flex-1 flex-col items-center gap-0.5 py-2.5 text-xs font-medium ${
                     active ? "text-indigo-600" : "text-slate-500"
                   }`}

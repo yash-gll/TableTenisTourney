@@ -9,6 +9,9 @@ TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL", "sqlite+pysqlite:///:mem
 # Postgres driver is never imported during the SQLite test run.
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 os.environ.setdefault("JWT_SECRET", "test-secret")
+# Disable rate limiting by default so the suite isn't throttled; the dedicated
+# rate-limit test enables it explicitly.
+os.environ.setdefault("RATE_LIMIT_ENABLED", "false")
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

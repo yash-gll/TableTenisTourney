@@ -19,9 +19,19 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:5173"
     cors_origins: str = "http://localhost:5173"
 
+    # Hardening / ops
+    rate_limit_enabled: bool = True
+    # Log verification/reset links to the console (dev convenience; these links
+    # contain raw tokens — disable in production once real email is wired up).
+    log_verification_links: bool = True
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def jwt_secret_is_default(self) -> bool:
+        return self.jwt_secret == "change-me-in-production"
 
 
 @lru_cache

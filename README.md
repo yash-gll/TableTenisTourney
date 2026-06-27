@@ -130,6 +130,28 @@ docker-compose.yml
 docs/API.md   REST API reference for the implemented endpoints
 ```
 
+## Production hardening (Phase 8)
+
+- **Rate limiting**: per-IP limits on auth endpoints (`login` 10/min, `register`/
+  `forgot`/`reset` 5/min) — returns `429 RATE_LIMITED`. In-memory (per process);
+  for multi-instance production swap the store in `app/core/ratelimit.py` for Redis.
+- **Request correlation & logs**: every response carries an `X-Request-ID`; each
+  request logs `method path -> status duration req=<id>`, and errors echo the id.
+- **Security**: Argon2id passwords; tokens stored hashed; bearer JWT; deny-by-default
+  authorization; emails never exposed publicly; backend decides winners/ranks.
+  Set a strong `JWT_SECRET` (the app warns on the default) and
+  `LOG_VERIFICATION_LINKS=false` in production (those links carry raw tokens).
+- **Accessibility**: labelled inputs, aria-labelled icon controls, `aria-current`
+  nav, large touch targets, `dvh`/safe-area layout.
+- **E2E**: Playwright scaffold in `frontend/e2e/`. With both servers running:
+  `cd frontend && npm run e2e:install && npm run test:e2e`.
+
+## Backups
+
+- **Production (Neon)**: automatic daily backups + point-in-time restore on the
+  free tier — no setup needed.
+- **Local / manual**: `pg_dump tt > backup.sql` (restore: `psql tt < backup.sql`).
+
 ## Deployment (free tier)
 
 Backend on **Cloud Run**, Postgres on **Neon**, frontend PWA on **Firebase

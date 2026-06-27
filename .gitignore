@@ -16,6 +16,11 @@ dist/
 .vite/
 *.tsbuildinfo
 
+# Playwright
+playwright-report/
+test-results/
+/frontend/playwright/.cache/
+
 # Env
 .env
 .env.local

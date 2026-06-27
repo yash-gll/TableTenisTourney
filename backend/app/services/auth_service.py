@@ -77,9 +77,11 @@ class AuthService:
             expires_at=_now() + timedelta(hours=settings.verify_token_ttl_hours),
         )
         self.db.add(token)
-        link = f"{settings.frontend_url}/verify-email?token={raw}"
-        # No email infra (personal project): surface the link via logs.
-        logger.info("EMAIL VERIFICATION for %s: %s", user.email, link)
+        # No email infra (personal project): surface the link via logs when enabled.
+        # These links contain a raw token — gate behind a setting (off in prod).
+        if settings.log_verification_links:
+            link = f"{settings.frontend_url}/verify-email?token={raw}"
+            logger.info("EMAIL VERIFICATION for %s: %s", user.email, link)
 
     def resend_verification(self, *, email: str) -> None:
         user = self._get_user_by_email(email)
@@ -183,8 +185,9 @@ class AuthService:
             expires_at=_now() + timedelta(hours=settings.reset_token_ttl_hours),
         )
         self.db.add(token)
-        link = f"{settings.frontend_url}/reset-password?token={raw}"
-        logger.info("PASSWORD RESET for %s: %s", user.email, link)
+        if settings.log_verification_links:
+            link = f"{settings.frontend_url}/reset-password?token={raw}"
+            logger.info("PASSWORD RESET for %s: %s", user.email, link)
         self.db.commit()
 
     def reset_password(self, *, token: str, password: str) -> None:

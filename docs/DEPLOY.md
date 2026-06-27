@@ -51,7 +51,9 @@ gcloud run deploy tt-backend \
   --set-env-vars "DATABASE_URL=postgresql+psycopg://...?sslmode=require" \
   --set-env-vars "JWT_SECRET=$(openssl rand -hex 32)" \
   --set-env-vars "FRONTEND_URL=https://YOUR_PROJECT.web.app" \
-  --set-env-vars "CORS_ORIGINS=https://YOUR_PROJECT.web.app,https://YOUR_PROJECT.firebaseapp.com"
+  --set-env-vars "CORS_ORIGINS=https://YOUR_PROJECT.web.app,https://YOUR_PROJECT.firebaseapp.com" \
+  --set-env-vars "RATE_LIMIT_ENABLED=true" \
+  --set-env-vars "LOG_VERIFICATION_LINKS=false"
 ```
 
 - Cloud Run sets `PORT` (8080); the container already honors it.

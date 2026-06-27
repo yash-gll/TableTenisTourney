@@ -25,9 +25,12 @@ export function Button({
 // without it, RHF can't read values and reports every field as "Required".
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
   function Input({ className = "", ...props }, ref) {
+    // Fall back to the placeholder for an accessible name when no label is given.
+    const ariaLabel = props["aria-label"] ?? (typeof props.placeholder === "string" ? props.placeholder : undefined);
     return (
       <input
         ref={ref}
+        aria-label={ariaLabel}
         className={`min-h-11 w-full rounded-lg border border-slate-300 px-3.5 py-3 text-base focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 ${className}`}
         {...props}
       />

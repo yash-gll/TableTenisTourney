@@ -30,12 +30,16 @@ function Stepper({
       <div className="text-4xl font-bold tabular-nums">{value}</div>
       <div className="mt-3 flex justify-center gap-2">
         <button
+          type="button"
+          aria-label={`Decrease ${label} score`}
           onClick={() => onChange(Math.max(0, value - 1))}
           className="h-11 w-11 rounded-full bg-slate-200 text-2xl font-bold active:bg-slate-300"
         >
           −
         </button>
         <button
+          type="button"
+          aria-label={`Increase ${label} score`}
           onClick={() => onChange(Math.min(max, value + 1))}
           className="h-11 w-11 rounded-full bg-indigo-600 text-2xl font-bold text-white active:bg-indigo-700"
         >

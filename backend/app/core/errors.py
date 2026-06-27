@@ -21,12 +21,15 @@ class AppError(HTTPException):
 
 
 def _error_body(code: str, message: str, details: dict[str, Any], request: Request) -> dict:
+    request_id = getattr(request.state, "request_id", None) or request.headers.get(
+        "x-request-id", ""
+    )
     return {
         "error": {
             "code": code,
             "message": message,
             "details": details,
-            "request_id": request.headers.get("x-request-id", ""),
+            "request_id": request_id,
         }
     }
 
