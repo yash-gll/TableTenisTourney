@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode } from "react";
 
 export function Button({
@@ -20,14 +21,19 @@ export function Button({
   );
 }
 
-export function Input({ className = "", ...props }: InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <input
-      className={`min-h-11 w-full rounded-lg border border-slate-300 px-3.5 py-3 text-base focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 ${className}`}
-      {...props}
-    />
-  );
-}
+// forwardRef so react-hook-form's register() ref attaches to the real input;
+// without it, RHF can't read values and reports every field as "Required".
+export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
+  function Input({ className = "", ...props }, ref) {
+    return (
+      <input
+        ref={ref}
+        className={`min-h-11 w-full rounded-lg border border-slate-300 px-3.5 py-3 text-base focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 ${className}`}
+        {...props}
+      />
+    );
+  },
+);
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
   return (
