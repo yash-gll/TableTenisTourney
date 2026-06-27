@@ -23,6 +23,10 @@ import type {
 
 type Tab = "teams" | "matches" | "table" | "bracket";
 
+// Statuses where scores/standings can still change → auto-refresh these views.
+const LIVE_STATES = ["SCHEDULED", "GROUP_IN_PROGRESS", "GROUP_COMPLETE", "QUALIFIERS_IN_PROGRESS"];
+const LIVE_MS = 5000;
+
 function manualActions(status: TournamentStatus): { label: string; target: TournamentStatus; secondary?: boolean }[] {
   switch (status) {
     case "DRAFT":
@@ -66,6 +70,9 @@ export function TournamentDetail() {
   const { data: t } = useQuery({
     queryKey: ["tournament", id],
     queryFn: () => api<Tournament>(`/tournaments/${id}`),
+    // Poll while in progress so status changes (e.g. bracket generated) show up.
+    refetchInterval: (q) =>
+      LIVE_STATES.includes((q.state.data as Tournament | undefined)?.status ?? "") ? LIVE_MS : false,
   });
   const { data: teams } = useQuery({
     queryKey: ["teams", id],
@@ -77,25 +84,32 @@ export function TournamentDetail() {
     ? ["QUALIFIERS_IN_PROGRESS", "COMPLETED", "FINALIZED", "ARCHIVED"].includes(t.status)
     : false;
   const activeTab: Tab = tab ?? (t ? defaultTab(t.status) : "teams");
+  // Live = scores/standings can still change; drives auto-refresh.
+  const isLive = !!t && LIVE_STATES.includes(t.status);
+  const livePoll = isLive ? LIVE_MS : false;
 
   const { data: matches } = useQuery({
     queryKey: ["matches", id],
     queryFn: () => api<Match[]>(`/tournaments/${id}/matches`),
     enabled: hasSchedule,
+    refetchInterval: livePoll,
   });
   const { data: leaderboard } = useQuery({
     queryKey: ["leaderboard", id],
     queryFn: () => api<Leaderboard>(`/tournaments/${id}/leaderboard`),
     enabled: hasSchedule && activeTab === "table",
+    refetchInterval: livePoll,
   });
   const { data: explanation } = useQuery({
     queryKey: ["leaderboard", id, "explanation"],
     queryFn: () => api<ExplanationResponse>(`/tournaments/${id}/leaderboard/explanation`),
     enabled: hasSchedule && activeTab === "table",
+    refetchInterval: livePoll,
   });
   const { data: bracket } = useQuery({
     queryKey: ["bracket", id],
     queryFn: () => api<Bracket>(`/tournaments/${id}/bracket`),
+    refetchInterval: livePoll,
     enabled: hasBracket && activeTab === "bracket",
   });
 
@@ -173,8 +187,16 @@ export function TournamentDetail() {
       <div className="space-y-4">
         <Card>
           <div className="flex items-center justify-between gap-2">
-            <span className="rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-medium text-indigo-700">
-              {t.status.replace(/_/g, " ")}
+            <span className="flex items-center gap-2">
+              <span className="rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-medium text-indigo-700">
+                {t.status.replace(/_/g, " ")}
+              </span>
+              {isLive && (
+                <span className="flex items-center gap-1 text-xs font-medium text-emerald-600">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+                  Live
+                </span>
+              )}
             </span>
             <span className="text-sm text-slate-500">
               {t.target_points} pts{t.win_by_two ? " · win by 2" : ""}
