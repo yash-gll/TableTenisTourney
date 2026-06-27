@@ -10,8 +10,8 @@ services:
     region: oregon
     healthCheckPath: /api/v1/health
     autoDeploy: true
-    # Run migrations on each deploy, then serve on Render's $PORT.
-    dockerCommand: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    # Migrate + serve via a script (avoids shell-quoting issues in dockerCommand).
+    dockerCommand: sh start.sh
     envVars:
       - key: JWT_SECRET
         generateValue: true
