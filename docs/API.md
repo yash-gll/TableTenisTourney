@@ -1,4 +1,4 @@
-# API Reference — Phases 0–5
+# API Reference — Phases 0–7
 
 Base path: `/api/v1`. All requests/responses are JSON. Authenticated endpoints
 expect `Authorization: Bearer <access_token>`.
@@ -136,6 +136,37 @@ with the latest version. Invalid scores return `422 INVALID_MATCH_SCORE`.
 Dependency flow: QF1 winner → Final; QF1 loser → QF3; QF2 winner → QF3; QF3
 winner → Final. Placements: 1st Final winner, 2nd Final loser, 3rd QF3 loser,
 4th QF2 loser. Completing the Final moves the tournament to `COMPLETED`.
+
+## Ratings (Elo)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/ratings/config` | public | Current Elo config (K values, bonuses, floor). |
+| PATCH | `/admin/ratings/config` | admin | Update config fields. |
+| GET | `/players/{id}/rating-events` | public | A player's (non-superseded) rating ledger. |
+| POST | `/admin/players/{id}/rating-adjustment` | admin | `{ delta, reason }` manual adjustment (audited). |
+| POST | `/admin/ratings/recalculate` | admin | `{ tournament_id }` — replay ratings from start snapshots. |
+
+Match Elo is applied on completion (both teammates get the same delta; K varies
+by stage: group 20, QF1/QF2 24, QF3 28, Final 32). A correction replays the whole
+tournament from its start snapshots so ratings reflect the corrected history.
+
+## Finalization
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/tournaments/{id}/finalize` | admin | From `COMPLETED`: apply placement bonuses (champion +50, runner-up +15, third +5), snapshot end ratings, persist results, set `FINALIZED` (read-only). |
+| POST | `/tournaments/{id}/reopen` | admin | From `FINALIZED`: revert placement bonuses, delete the result record, back to `COMPLETED` (critical, audited). |
+
+## History (public, finalized tournaments)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/history/tournaments` | List finalized tournaments with champion. |
+| GET | `/history/tournaments/{id}` | Summary + placements. |
+| GET | `/history/tournaments/{id}/leaderboard` | Final group leaderboard snapshot. |
+| GET | `/history/tournaments/{id}/bracket` | Final bracket snapshot. |
+| GET | `/history/tournaments/{id}/matches` | All match results. |
 
 ## Authorization model
 

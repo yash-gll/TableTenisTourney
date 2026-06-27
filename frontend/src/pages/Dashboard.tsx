@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import { AppShell } from "../components/AppShell";
 import { Avatar } from "../components/Avatar";
+import { RatingHistory } from "../components/RatingHistory";
 import { Button, Card, Input, StatusBadge } from "../components/ui";
 import { api } from "../lib/api";
 import type { PlayerProfile } from "../lib/types";
@@ -98,6 +99,13 @@ export function Dashboard() {
                 </div>
               </div>
             </Card>
+
+            <div>
+              <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
+                Rating history
+              </h2>
+              <RatingHistory playerId={profile.id} />
+            </div>
 
             <Card>
               <h2 className="font-semibold">Edit profile</h2>

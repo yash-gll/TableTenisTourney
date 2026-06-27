@@ -5,6 +5,7 @@ import { useAuth } from "./lib/auth";
 import { AdminPendingPlayers } from "./pages/AdminPendingPlayers";
 import { Dashboard } from "./pages/Dashboard";
 import { ForgotPassword } from "./pages/ForgotPassword";
+import { HistoryDetailPage, HistoryList } from "./pages/History";
 import { Landing } from "./pages/Landing";
 import { Login } from "./pages/Login";
 import { Register } from "./pages/Register";
@@ -80,6 +81,22 @@ export function AppRoutes() {
           <RequireAdmin>
             <TournamentDetail />
           </RequireAdmin>
+        }
+      />
+      <Route
+        path="/history"
+        element={
+          <RequireAuth>
+            <HistoryList />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/history/:id"
+        element={
+          <RequireAuth>
+            <HistoryDetailPage />
+          </RequireAuth>
         }
       />
       <Route path="*" element={<Navigate to="/" replace />} />

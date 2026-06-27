@@ -1,7 +1,7 @@
 # 🏓 Table Tennis Tournament Platform
 
 A web application for running team-based table tennis tournaments. This repository
-implements **Phases 0–5** of the project plan:
+implements **Phases 0–7** (the full MVP) of the project plan:
 
 - **0 Foundation**, **1 Auth & approval**, **2 Tournaments & teams**
 - **3 Group schedule & scoring** — single round-robin (circle method), match
@@ -10,10 +10,13 @@ implements **Phases 0–5** of the project plan:
   with tie explanations and top-four qualification
 - **5 Qualifier bracket** — QF1/QF2/QF3/Final with winner-loser propagation and
   safe downstream reset on corrections
+- **6 Ratings** — Elo with stage-based K, placement bonuses, an append-only rating
+  ledger, and replay after corrections
+- **7 History & finalization** — finalize (placement bonuses + snapshots +
+  results record), reopen, and a public tournament history
 
-Ratings (Phase 6) and history/finalization (Phase 7) are still to come. All
-business rules (winner determination, ranking, propagation) are enforced
-server-side; the frontend is mobile-first.
+All business rules (winner determination, ranking, propagation, ratings) are
+enforced server-side; the frontend is mobile-first and installable as a PWA.
 
 ## Stack
 

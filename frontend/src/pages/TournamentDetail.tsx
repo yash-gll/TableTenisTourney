@@ -112,6 +112,16 @@ export function TournamentDetail() {
     onSuccess: () => { setTab("bracket"); invalidate(); },
     onError: (e) => setError(e instanceof ApiError ? e.message : "Failed to generate bracket"),
   });
+  const finalize = useMutation({
+    mutationFn: () => api(`/tournaments/${id}/finalize`, { method: "POST" }),
+    onSuccess: () => { setTab("bracket"); invalidate(); },
+    onError: (e) => setError(e instanceof ApiError ? e.message : "Failed to finalize"),
+  });
+  const reopen = useMutation({
+    mutationFn: () => api(`/tournaments/${id}/reopen`, { method: "POST" }),
+    onSuccess: invalidate,
+    onError: (e) => setError(e instanceof ApiError ? e.message : "Failed to reopen"),
+  });
 
   const run = <T,>(fn: () => Promise<T>) => async () => {
     setError(null);
@@ -190,7 +200,31 @@ export function TournamentDetail() {
                 Generate bracket
               </Button>
             )}
+            {t.status === "COMPLETED" && (
+              <Button className="flex-1" disabled={finalize.isPending} onClick={() => finalize.mutate()}>
+                Finalize
+              </Button>
+            )}
+            {t.status === "FINALIZED" && (
+              <Button
+                variant="secondary"
+                className="flex-1"
+                disabled={reopen.isPending}
+                onClick={() => {
+                  if (window.confirm("Reopen this finalized tournament? Placement bonuses will be reverted.")) {
+                    reopen.mutate();
+                  }
+                }}
+              >
+                Reopen
+              </Button>
+            )}
           </div>
+          {t.status === "FINALIZED" && (
+            <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-700">
+              Finalized — read-only. Results are in History.
+            </p>
+          )}
         </Card>
 
         {error && <p className="text-sm text-rose-600">{error}</p>}

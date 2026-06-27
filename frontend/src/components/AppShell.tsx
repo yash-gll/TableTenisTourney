@@ -34,6 +34,15 @@ function TrophyIcon({ active }: { active: boolean }) {
   );
 }
 
+function HistoryIcon({ active }: { active: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={active ? 2.4 : 1.8}>
+      <path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3.5 12a8.5 8.5 0 1 0 2.2-5.7M3.5 4v3h3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 interface Tab {
   to: string;
   label: string;
@@ -51,11 +60,14 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
     tabs.push({ to: "/tournaments", label: "Tournaments", icon: TrophyIcon });
     tabs.push({ to: "/admin", label: "Players", icon: PlayersIcon });
   }
+  tabs.push({ to: "/history", label: "History", icon: HistoryIcon });
   const showBottomNav = tabs.length > 1;
 
-  // Highlight the Tournaments tab on nested tournament routes too.
+  // Highlight a tab on its nested routes too.
   const isActive = (to: string) =>
-    location.pathname === to || (to === "/tournaments" && location.pathname.startsWith("/tournaments"));
+    location.pathname === to ||
+    (to === "/tournaments" && location.pathname.startsWith("/tournaments")) ||
+    (to === "/history" && location.pathname.startsWith("/history"));
 
   const onLogout = async () => {
     await logout();

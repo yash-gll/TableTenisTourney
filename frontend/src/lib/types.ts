@@ -166,3 +166,35 @@ export interface Bracket {
   matches: Match[];
   placements: Placement[];
 }
+
+export interface RatingEvent {
+  id: string;
+  tournament_id: string | null;
+  match_id: string | null;
+  event_type: string;
+  rating_before: number;
+  delta: number;
+  rating_after: number;
+  reason: string | null;
+  created_at: string;
+}
+
+export interface HistoryItem {
+  id: string;
+  name: string;
+  slug: string;
+  location: string | null;
+  finalized_at: string | null;
+  champion_team_id: string | null;
+  champion_name: string | null;
+}
+
+export interface HistoryDetail {
+  id: string;
+  name: string;
+  location: string | null;
+  status: string;
+  finalized_at: string | null;
+  champion_name: string | null;
+  placements: Placement[];
+}
