@@ -53,6 +53,10 @@ class AuthService:
             role=UserRole.PLAYER,
             account_status=AccountStatus.ACTIVE,
         )
+        # No email service → auto-verify so users can log in; admin approval is
+        # still required before they can join a team.
+        if settings.auto_verify_email:
+            user.email_verified_at = _now()
         self.db.add(user)
         self.db.flush()  # assign user.id
 
@@ -63,7 +67,8 @@ class AuthService:
         )
         self.db.add(profile)
 
-        self._issue_verification(user)
+        if not settings.auto_verify_email:
+            self._issue_verification(user)
         self.db.commit()
         self.db.refresh(user)
         return user

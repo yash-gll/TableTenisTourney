@@ -21,6 +21,9 @@ class Settings(BaseSettings):
 
     # Hardening / ops
     rate_limit_enabled: bool = True
+    # Auto-verify email at registration (for deployments with no email service).
+    # Admin approval remains the real gate. Set true in production.
+    auto_verify_email: bool = False
     # Log verification/reset links to the console (dev convenience; these links
     # contain raw tokens — disable in production once real email is wired up).
     log_verification_links: bool = True

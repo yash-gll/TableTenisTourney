@@ -26,6 +26,20 @@ def test_register_creates_pending_profile(client):
     assert resp.json()["error"]["code"] == "EMAIL_NOT_VERIFIED"
 
 
+def test_auto_verify_lets_user_login_without_verification(client):
+    from app.core.config import settings
+
+    settings.auto_verify_email = True
+    try:
+        register_player(client, email="auto@example.com", display_name="Auto V")
+        resp = client.post(
+            "/api/v1/auth/login", json={"email": "auto@example.com", "password": "playerpass1"}
+        )
+        assert resp.status_code == 200  # logged in without an email-verify step
+    finally:
+        settings.auto_verify_email = False
+
+
 def test_duplicate_email_rejected(client):
     register_player(client)
     resp = client.post(
