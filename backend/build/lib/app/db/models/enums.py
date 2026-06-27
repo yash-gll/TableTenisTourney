@@ -50,31 +50,3 @@ class TournamentVisibility(str, enum.Enum):
     PUBLIC = "PUBLIC"
     PRIVATE = "PRIVATE"
     UNLISTED = "UNLISTED"
-
-
-class MatchStatus(str, enum.Enum):
-    WAITING_FOR_TEAMS = "WAITING_FOR_TEAMS"
-    SCHEDULED = "SCHEDULED"
-    IN_PROGRESS = "IN_PROGRESS"
-    COMPLETED = "COMPLETED"
-    CANCELLED = "CANCELLED"
-    VOID = "VOID"
-
-
-class MatchStage(str, enum.Enum):
-    GROUP = "GROUP"
-    QF1 = "QF1"
-    QF2 = "QF2"
-    QF3 = "QF3"
-    FINAL = "FINAL"
-    TIEBREAKER = "TIEBREAKER"
-
-
-class DependencySlot(str, enum.Enum):
-    TEAM_A = "TEAM_A"
-    TEAM_B = "TEAM_B"
-
-
-class DependencyOutcome(str, enum.Enum):
-    WINNER = "WINNER"
-    LOSER = "LOSER"

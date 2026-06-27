@@ -1,13 +1,11 @@
 """Helpers that build response schemas from joined User + PlayerProfile models."""
 
-from app.db.models.match import Match
 from app.db.models.player_profile import PlayerProfile
 from app.db.models.team import Team
 from app.db.models.tournament import Tournament
 from app.db.models.user import User
 from app.domain import tournament_state
 from app.schemas.admin import AdminPlayerOut
-from app.schemas.match import MatchOut
 from app.schemas.player import MeResponse, PlayerProfileOut
 from app.schemas.team import TeamMemberOut, TeamOut
 from app.schemas.tournament import TournamentOut
@@ -90,30 +88,6 @@ def to_team_out(team: Team) -> TeamOut:
         members=members,
         average_rating=avg,
         is_complete=len(members) == 2,
-    )
-
-
-def to_match_out(match: Match) -> MatchOut:
-    return MatchOut(
-        id=match.id,
-        tournament_id=match.tournament_id,
-        stage=match.stage,
-        round_number=match.round_number,
-        display_order=match.display_order,
-        court_name=match.court_name,
-        team_a_id=match.team_a_id,
-        team_b_id=match.team_b_id,
-        team_a_name=match.team_a.name if match.team_a else None,
-        team_b_name=match.team_b.name if match.team_b else None,
-        team_a_score=match.team_a_score,
-        team_b_score=match.team_b_score,
-        winner_team_id=match.winner_team_id,
-        loser_team_id=match.loser_team_id,
-        status=match.status,
-        scheduled_at=match.scheduled_at,
-        started_at=match.started_at,
-        completed_at=match.completed_at,
-        version=match.version,
     )
 
 

@@ -6,15 +6,13 @@ from sqlalchemy.orm import Session
 from app.core.deps import get_optional_user, get_request_meta, is_admin_user, require_admin
 from app.db.models.user import User
 from app.db.session import get_db
-from app.schemas.mappers import to_match_out, to_tournament_out
-from app.schemas.match import MatchOut, ScheduleGenerateResponse
+from app.schemas.mappers import to_tournament_out
 from app.schemas.tournament import (
     TournamentCreate,
     TournamentOut,
     TournamentUpdate,
     TransitionRequest,
 )
-from app.services.schedule_service import ScheduleService
 from app.services.tournament_service import TournamentService
 
 router = APIRouter(prefix="/tournaments", tags=["tournaments"])
@@ -84,25 +82,3 @@ def delete_tournament(
     meta: dict = Depends(get_request_meta),
 ) -> None:
     TournamentService(db).delete(tournament_id=tournament_id, actor=actor, meta=meta)
-
-
-@router.post("/{tournament_id}/schedule/generate", response_model=ScheduleGenerateResponse)
-def generate_schedule(
-    tournament_id: uuid.UUID,
-    actor: User = Depends(require_admin),
-    db: Session = Depends(get_db),
-    meta: dict = Depends(get_request_meta),
-) -> ScheduleGenerateResponse:
-    count, rounds = ScheduleService(db).generate(tournament_id=tournament_id, actor=actor, meta=meta)
-    return ScheduleGenerateResponse(match_count=count, rounds=rounds)
-
-
-@router.get("/{tournament_id}/matches", response_model=list[MatchOut])
-def list_matches(
-    tournament_id: uuid.UUID,
-    viewer: User | None = Depends(get_optional_user),
-    db: Session = Depends(get_db),
-) -> list[MatchOut]:
-    TournamentService(db).get_visible(tournament_id, is_admin=is_admin_user(viewer))
-    matches = ScheduleService(db).list_matches(tournament_id)
-    return [to_match_out(m) for m in matches]

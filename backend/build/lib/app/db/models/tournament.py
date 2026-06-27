@@ -2,14 +2,11 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import JSON, Boolean, DateTime, Enum, ForeignKey, Integer, String, Text, Uuid
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, String, Text, Uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDMixin
 from app.db.models.enums import TournamentStatus, TournamentVisibility
-
-_JSONType = JSON().with_variant(JSONB(), "postgresql")
 
 if TYPE_CHECKING:
     from app.db.models.team import Team
@@ -49,8 +46,6 @@ class Tournament(UUIDMixin, TimestampMixin, Base):
     finalized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     rating_status: Mapped[str | None] = mapped_column(String(40))
     version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
-    # Admin tie-break override: {team_id: order_int}, applied only within a tied group.
-    manual_rankings: Mapped[dict | None] = mapped_column(_JSONType)
 
     teams: Mapped[list["Team"]] = relationship(
         back_populates="tournament",

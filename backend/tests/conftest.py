@@ -158,3 +158,27 @@ def create_tournament(client: TestClient, admin_token: str, name: str = "Summer 
     )
     assert resp.status_code == 201, resp.text
     return resp.json()
+
+
+def setup_closed_tournament(client: TestClient, db: Session, admin_token: str, n_teams: int) -> dict:
+    """Create a tournament with `n_teams` complete teams (2 approved players each)
+    and move it to REGISTRATION_CLOSED. Returns {tournament, team_ids}."""
+    hdr = {"Authorization": f"Bearer {admin_token}"}
+    t = create_tournament(client, admin_token, name=f"Cup-{n_teams}")
+    tid = t["id"]
+    team_ids = []
+    for i in range(n_teams):
+        team_id = client.post(
+            f"/api/v1/tournaments/{tid}/teams", json={"name": f"Team {i + 1}"}, headers=hdr
+        ).json()["id"]
+        for j in range(2):
+            pid = make_approved_player(db, f"t{n_teams}_{i}_{j}@example.com", f"P{i}{j}")
+            client.post(
+                f"/api/v1/tournaments/{tid}/teams/{team_id}/members",
+                json={"player_id": pid},
+                headers=hdr,
+            )
+        team_ids.append(team_id)
+    client.post(f"/api/v1/tournaments/{tid}/transition", json={"target": "REGISTRATION_OPEN"}, headers=hdr)
+    client.post(f"/api/v1/tournaments/{tid}/transition", json={"target": "REGISTRATION_CLOSED"}, headers=hdr)
+    return {"tournament_id": tid, "team_ids": team_ids}
