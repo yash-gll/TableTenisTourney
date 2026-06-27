@@ -18,13 +18,14 @@ import type {
   ExplanationResponse,
   Leaderboard,
   Match,
+  MatchOdds,
   MyPrediction,
   Team,
   Tournament,
   TournamentStatus,
 } from "../lib/types";
 
-type Tab = "teams" | "matches" | "table" | "bracket";
+type Tab = "teams" | "matches" | "table" | "bracket" | "picks";
 
 // Statuses where scores/standings can still change → auto-refresh these views.
 const LIVE_STATES = ["SCHEDULED", "GROUP_IN_PROGRESS", "GROUP_COMPLETE", "QUALIFIERS_IN_PROGRESS"];
@@ -127,6 +128,13 @@ export function TournamentDetail() {
   const predictionMap = Object.fromEntries(
     (myPredictions ?? []).map((p) => [p.match_id, p.predicted_winner_team_id]),
   );
+  const { data: oddsList } = useQuery({
+    queryKey: ["odds", id],
+    queryFn: () => api<MatchOdds[]>(`/tournaments/${id}/odds`),
+    enabled: canPredict,
+    refetchInterval: livePoll,
+  });
+  const oddsMap = Object.fromEntries((oddsList ?? []).map((o) => [o.match_id, o]));
   const predict = useMutation({
     mutationFn: ({ matchId, teamId }: { matchId: string; teamId: string }) =>
       api(`/matches/${matchId}/predict`, { method: "POST", body: { winner_team_id: teamId } }),
@@ -204,6 +212,7 @@ export function TournamentDetail() {
     { key: "matches", label: "Matches", show: hasSchedule },
     { key: "table", label: "Table", show: hasSchedule },
     { key: "bracket", label: "Bracket", show: hasBracket },
+    { key: "picks", label: "Picks", show: hasSchedule },
   ];
 
   return (
@@ -327,19 +336,19 @@ export function TournamentDetail() {
         )}
 
         {activeTab === "matches" && (
-          <div className="space-y-4">
-            <MatchList
-              matches={matches ?? []}
-              targetPoints={t.target_points}
-              editable={isAdmin && t.status !== "COMPLETED" && t.status !== "FINALIZED"}
-              onChanged={invalidate}
-              canPredict={canPredict}
-              predictions={predictionMap}
-              onPredict={(matchId, teamId) => predict.mutate({ matchId, teamId })}
-            />
-            <PredictionLeaderboard tournamentId={id} pollMs={livePoll} />
-          </div>
+          <MatchList
+            matches={matches ?? []}
+            targetPoints={t.target_points}
+            editable={isAdmin && t.status !== "COMPLETED" && t.status !== "FINALIZED"}
+            onChanged={invalidate}
+            canPredict={canPredict}
+            predictions={predictionMap}
+            odds={oddsMap}
+            onPredict={(matchId, teamId) => predict.mutate({ matchId, teamId })}
+          />
         )}
+
+        {activeTab === "picks" && <PredictionLeaderboard tournamentId={id} pollMs={livePoll} />}
 
         {activeTab === "table" && leaderboard && (
           <LeaderboardTable data={leaderboard} explanation={explanation?.explanation ?? []} />

@@ -19,3 +19,11 @@ class PredictionLeaderboardRow(BaseModel):
     points: int
     correct: int
     total: int
+
+
+class MatchOddsOut(BaseModel):
+    match_id: uuid.UUID
+    team_a_prob: float
+    team_b_prob: float
+    team_a_points: int  # points if you pick A and it's right
+    team_b_points: int

@@ -9,7 +9,9 @@ from app.db.models.match import Match
 from app.db.models.match_prediction import MatchPrediction
 from app.db.models.player_profile import PlayerProfile
 from app.db.models.rating_event import RatingEvent
+from app.db.models.team_member import TeamMember
 from app.domain.prediction_scoring import prediction_points
+from app.domain.rating import expected_score
 
 CLOSED_STATES = {MatchStatus.COMPLETED, MatchStatus.CANCELLED, MatchStatus.VOID}
 
@@ -91,6 +93,45 @@ class PredictionService:
             pick_prob = prob_a if p.predicted_winner_team_id == match.team_a_id else prob_b
             p.points_awarded = prediction_points(pick_prob, p.is_correct)
         self.db.flush()
+
+    def tournament_odds(self, tournament_id: uuid.UUID) -> list[dict]:
+        """Per-match win probabilities + potential points, for still-open matches."""
+        matches = self.db.execute(
+            select(Match).where(
+                Match.tournament_id == tournament_id,
+                Match.status.in_([MatchStatus.SCHEDULED, MatchStatus.IN_PROGRESS]),
+                Match.team_a_id.isnot(None),
+                Match.team_b_id.isnot(None),
+            )
+        ).scalars().all()
+        if not matches:
+            return []
+
+        team_ids = {m.team_a_id for m in matches} | {m.team_b_id for m in matches}
+        avg_rows = self.db.execute(
+            select(TeamMember.team_id, func.avg(PlayerProfile.current_rating))
+            .join(PlayerProfile, PlayerProfile.id == TeamMember.player_id)
+            .where(TeamMember.team_id.in_(team_ids))
+            .group_by(TeamMember.team_id)
+        ).all()
+        avg = {tid: float(r) for tid, r in avg_rows}
+
+        out = []
+        for m in matches:
+            ra = avg.get(m.team_a_id, 1000.0)
+            rb = avg.get(m.team_b_id, 1000.0)
+            ea = expected_score(ra, rb)
+            eb = 1.0 - ea
+            out.append(
+                {
+                    "match_id": m.id,
+                    "team_a_prob": round(ea, 3),
+                    "team_b_prob": round(eb, 3),
+                    "team_a_points": prediction_points(ea, True),
+                    "team_b_points": prediction_points(eb, True),
+                }
+            )
+        return out
 
     def leaderboard(self, tournament_id: uuid.UUID) -> list[dict]:
         rows = self.db.execute(

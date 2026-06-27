@@ -6,7 +6,12 @@ from sqlalchemy.orm import Session
 from app.core.deps import require_approved_player
 from app.db.models.user import User
 from app.db.session import get_db
-from app.schemas.prediction import MyPredictionOut, PredictionLeaderboardRow, PredictRequest
+from app.schemas.prediction import (
+    MatchOddsOut,
+    MyPredictionOut,
+    PredictionLeaderboardRow,
+    PredictRequest,
+)
 from app.services.prediction_service import PredictionService
 
 router = APIRouter(tags=["predictions"])
@@ -44,6 +49,11 @@ def my_predictions(
         )
         for p in preds
     ]
+
+
+@router.get("/tournaments/{tournament_id}/odds", response_model=list[MatchOddsOut])
+def match_odds(tournament_id: uuid.UUID, db: Session = Depends(get_db)) -> list[MatchOddsOut]:
+    return [MatchOddsOut(**o) for o in PredictionService(db).tournament_odds(tournament_id)]
 
 
 @router.get(

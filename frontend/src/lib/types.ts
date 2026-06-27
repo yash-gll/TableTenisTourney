@@ -125,6 +125,14 @@ export interface PredictionRow {
   total: number;
 }
 
+export interface MatchOdds {
+  match_id: string;
+  team_a_prob: number;
+  team_b_prob: number;
+  team_a_points: number;
+  team_b_points: number;
+}
+
 export interface AdminPlayer {
   player_id: string;
   user_id: string;

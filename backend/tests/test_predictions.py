@@ -64,6 +64,16 @@ def test_pick_is_locked_once_made(client, db, admin_token):
     assert change.status_code == 409 and change.json()["error"]["code"] == "PREDICTION_LOCKED"
 
 
+def test_odds_endpoint_even_match(client, db, admin_token):
+    tid, m = _scheduled(client, db, admin_token)
+    odds = client.get(f"/api/v1/tournaments/{tid}/odds").json()
+    assert len(odds) == 1
+    o = odds[0]
+    # Both teams start at 1000 → ~50/50 → 200 points each side.
+    assert abs(o["team_a_prob"] - 0.5) < 0.01 and o["team_a_points"] == 200
+    assert o["team_b_points"] == 200
+
+
 def test_cannot_predict_completed_match(client, db, admin_token):
     tid, m = _scheduled(client, db, admin_token)
     ptoken = _predictor_token(client, db)

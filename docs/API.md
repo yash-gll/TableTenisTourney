@@ -165,7 +165,11 @@ re-graded automatically if a result is corrected.
 |--------|------|------|-------------|
 | POST | `/matches/{match_id}/predict` | approved player | `{ winner_team_id }`. Only while scheduled/in-progress. Upserts. |
 | GET | `/tournaments/{id}/predictions/me` | approved player | Your picks for the tournament. |
-| GET | `/tournaments/{id}/predictions/leaderboard` | public | Ranked predictors (points, correct/total). |
+| GET | `/tournaments/{id}/predictions/leaderboard` | public | Ranked predictors (odds-weighted points, correct/total). |
+| GET | `/tournaments/{id}/odds` | public | Per open-match win probabilities + potential points each side (from current Elo). |
+
+Scoring is odds-weighted: a correct pick is worth ≈`100 / (pre-match win
+probability of the picked team)`, clamped to 111–1000; wrong picks score 0.
 
 ## Leaderboard
 

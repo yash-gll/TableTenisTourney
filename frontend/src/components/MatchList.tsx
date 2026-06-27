@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { ApiError, api } from "../lib/api";
-import type { Match } from "../lib/types";
+import type { Match, MatchOdds } from "../lib/types";
 import { MatchScorer } from "./MatchScorer";
 import { Button, Card } from "./ui";
 
@@ -13,6 +13,7 @@ interface Props {
   // Prediction (pick'em) support — shown to players, not in admin-scoring mode.
   canPredict?: boolean;
   predictions?: Record<string, string>; // match_id -> predicted team_id
+  odds?: Record<string, MatchOdds>; // match_id -> odds
   onPredict?: (matchId: string, teamId: string) => void;
 }
 
@@ -30,6 +31,7 @@ export function MatchList({
   onChanged,
   canPredict = false,
   predictions = {},
+  odds = {},
   onPredict,
 }: Props) {
   const [scoring, setScoring] = useState<{ match: Match; correct: boolean } | null>(null);
@@ -126,24 +128,34 @@ export function MatchList({
               }
               // No pick yet — choose, with a confirm step (final once locked).
               if (open && !pick) {
-                const btn = (teamId: string, name: string | null) => (
+                const o = odds[m.id];
+                const btn = (teamId: string, name: string | null, prob?: number, pts?: number) => (
                   <button
                     onClick={() => {
-                      if (window.confirm(`Lock in ${name} as your pick? You can't change it.`)) {
+                      if (
+                        window.confirm(
+                          `Lock in ${name}${pts != null ? ` for +${pts} pts` : ""}? You can't change it.`,
+                        )
+                      ) {
                         onPredict?.(m.id, teamId);
                       }
                     }}
-                    className="flex-1 rounded-md border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-600 active:bg-slate-50"
+                    className="flex flex-1 flex-col items-center gap-0.5 rounded-md border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-600 active:bg-slate-50"
                   >
-                    {name}
+                    <span>{name}</span>
+                    {prob != null && pts != null && (
+                      <span className="text-[10px] font-normal text-slate-400">
+                        {Math.round(prob * 100)}% · +{pts}
+                      </span>
+                    )}
                   </button>
                 );
                 return (
                   <div className="mt-3">
                     <div className="mb-1 text-xs text-slate-400">Predict the winner (final once locked)</div>
                     <div className="flex gap-2">
-                      {btn(m.team_a_id, m.team_a_name)}
-                      {btn(m.team_b_id, m.team_b_name)}
+                      {btn(m.team_a_id, m.team_a_name, o?.team_a_prob, o?.team_a_points)}
+                      {btn(m.team_b_id, m.team_b_name, o?.team_b_prob, o?.team_b_points)}
                     </div>
                   </div>
                 );

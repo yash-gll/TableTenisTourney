@@ -19,7 +19,17 @@ export function PredictionLeaderboard({
     refetchInterval: pollMs,
   });
 
-  if (!data || data.length === 0) return null;
+  if (!data) return null;
+  if (data.length === 0) {
+    return (
+      <Card>
+        <p className="text-sm text-slate-500">
+          No picks yet. Head to <span className="font-medium">Matches</span> and predict the winners —
+          calling upsets scores the most.
+        </p>
+      </Card>
+    );
+  }
 
   return (
     <Card className="p-0">
