@@ -47,6 +47,22 @@ def test_predict_and_grade_on_completion(client, db, admin_token):
     assert board[0]["points"] == 1 and board[0]["correct"] == 1 and board[0]["total"] == 1
 
 
+def test_pick_is_locked_once_made(client, db, admin_token):
+    _tid, m = _scheduled(client, db, admin_token)
+    ptoken = _predictor_token(client, db)
+    first = client.post(
+        f"/api/v1/matches/{m['id']}/predict",
+        json={"winner_team_id": m["team_a_id"]}, headers=_auth(ptoken),
+    )
+    assert first.status_code == 200
+    # Trying to change it (to the other team or the same) is rejected.
+    change = client.post(
+        f"/api/v1/matches/{m['id']}/predict",
+        json={"winner_team_id": m["team_b_id"]}, headers=_auth(ptoken),
+    )
+    assert change.status_code == 409 and change.json()["error"]["code"] == "PREDICTION_LOCKED"
+
+
 def test_cannot_predict_completed_match(client, db, admin_token):
     tid, m = _scheduled(client, db, admin_token)
     ptoken = _predictor_token(client, db)

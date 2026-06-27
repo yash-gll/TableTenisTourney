@@ -34,12 +34,8 @@ class PredictionService:
             )
         ).scalar_one_or_none()
         if existing is not None:
-            existing.predicted_winner_team_id = winner_team_id
-            existing.is_correct = None
-            existing.points_awarded = 0
-            self.db.commit()
-            self.db.refresh(existing)
-            return existing
+            # A confirmed pick is final — no changing it.
+            raise errors.prediction_locked()
 
         pred = MatchPrediction(
             match_id=match_id,

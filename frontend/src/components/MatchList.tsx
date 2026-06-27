@@ -113,22 +113,34 @@ export function MatchList({
             {canPredict && m.team_a_id && m.team_b_id && (() => {
               const pick = predictions[m.id];
               const open = m.status === "SCHEDULED" || m.status === "IN_PROGRESS";
-              if (open) {
+              const pickName = pick === m.team_a_id ? m.team_a_name : m.team_b_name;
+
+              // Locked pick (already confirmed) — no changing it.
+              if (open && pick) {
+                return (
+                  <div className="mt-2 text-xs">
+                    <span className="text-slate-400">Your pick: </span>
+                    <span className="font-medium">{pickName} 🔒</span>
+                  </div>
+                );
+              }
+              // No pick yet — choose, with a confirm step (final once locked).
+              if (open && !pick) {
                 const btn = (teamId: string, name: string | null) => (
                   <button
-                    onClick={() => onPredict?.(m.id, teamId)}
-                    className={`flex-1 rounded-md border px-2 py-1.5 text-xs font-medium ${
-                      pick === teamId
-                        ? "border-indigo-500 bg-indigo-50 text-indigo-700"
-                        : "border-slate-200 text-slate-600 active:bg-slate-50"
-                    }`}
+                    onClick={() => {
+                      if (window.confirm(`Lock in ${name} as your pick? You can't change it.`)) {
+                        onPredict?.(m.id, teamId);
+                      }
+                    }}
+                    className="flex-1 rounded-md border border-slate-200 px-2 py-1.5 text-xs font-medium text-slate-600 active:bg-slate-50"
                   >
                     {name}
                   </button>
                 );
                 return (
                   <div className="mt-3">
-                    <div className="mb-1 text-xs text-slate-400">Your pick</div>
+                    <div className="mb-1 text-xs text-slate-400">Predict the winner (final once locked)</div>
                     <div className="flex gap-2">
                       {btn(m.team_a_id, m.team_a_name)}
                       {btn(m.team_b_id, m.team_b_name)}
@@ -141,7 +153,7 @@ export function MatchList({
                 return (
                   <div className="mt-2 text-xs font-medium">
                     <span className={correct ? "text-emerald-600" : "text-rose-500"}>
-                      {correct ? "✓ You called it" : "✗ Missed this one"}
+                      {correct ? "✓ You called it" : "✗ Missed this one"} ({pickName})
                     </span>
                   </div>
                 );

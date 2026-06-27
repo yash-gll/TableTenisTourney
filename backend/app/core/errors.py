@@ -280,3 +280,11 @@ def invalid_prediction() -> AppError:
     return AppError(
         422, "INVALID_PREDICTION", "Pick must be one of the two teams in the match."
     )
+
+
+def prediction_locked() -> AppError:
+    return AppError(
+        status.HTTP_409_CONFLICT,
+        "PREDICTION_LOCKED",
+        "Your pick is locked in and can't be changed.",
+    )
