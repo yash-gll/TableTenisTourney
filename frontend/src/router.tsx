@@ -7,6 +7,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { HistoryDetailPage, HistoryList } from "./pages/History";
 import { Landing } from "./pages/Landing";
+import { ComparePage } from "./pages/Compare";
 import { Login } from "./pages/Login";
 import { PlayersDirectory, PublicProfilePage } from "./pages/Players";
 import { Register } from "./pages/Register";
@@ -65,6 +66,14 @@ export function AppRoutes() {
         element={
           <RequireAuth>
             <PlayersDirectory />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/players/compare"
+        element={
+          <RequireAuth>
+            <ComparePage />
           </RequireAuth>
         }
       />

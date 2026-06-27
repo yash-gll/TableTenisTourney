@@ -36,6 +36,12 @@ export function PlayersDirectory() {
             Manage approvals & skills →
           </button>
         )}
+        <button
+          onClick={() => navigate("/players/compare")}
+          className="w-full rounded-lg border border-slate-200 py-2 text-sm font-medium text-indigo-700 active:bg-slate-50"
+        >
+          ⚖️ Compare players
+        </button>
         <Input placeholder="Search players by name…" value={q} onChange={(e) => setQ(e.target.value)} />
 
         {isLoading ? (
@@ -127,6 +133,12 @@ export function PublicProfilePage() {
           <SkillsCard playerId={profile.player_id} />
         </div>
 
+        <Link
+          to={`/players/compare?a=${profile.player_id}`}
+          className="block rounded-lg border border-slate-200 py-2 text-center text-sm font-medium text-indigo-700 active:bg-slate-50"
+        >
+          ⚖️ Compare with another player
+        </Link>
         <Link to="/players" className="block py-2 text-center text-sm text-slate-500">
           ← All players
         </Link>
