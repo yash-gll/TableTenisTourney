@@ -207,12 +207,12 @@ export function TournamentDetail() {
   }
 
   const editable = t.is_editable;
-  const tabs: { key: Tab; label: string; show: boolean }[] = [
-    { key: "teams", label: "Teams", show: true },
-    { key: "matches", label: "Matches", show: hasSchedule },
-    { key: "table", label: "Table", show: hasSchedule },
-    { key: "bracket", label: "Bracket", show: hasBracket },
-    { key: "picks", label: "Picks", show: hasSchedule },
+  const tabs: { key: Tab; label: string; icon: string; show: boolean }[] = [
+    { key: "teams", label: "Teams", icon: "👥", show: true },
+    { key: "matches", label: "Matches", icon: "🏓", show: hasSchedule },
+    { key: "table", label: "Table", icon: "📊", show: hasSchedule },
+    { key: "bracket", label: "Bracket", icon: "🏆", show: hasBracket },
+    { key: "picks", label: "Picks", icon: "🔮", show: hasSchedule },
   ];
 
   return (
@@ -298,11 +298,15 @@ export function TournamentDetail() {
             <button
               key={x.key}
               onClick={() => setTab(x.key)}
+              aria-label={x.label}
+              title={x.label}
               className={`flex-1 rounded-md py-2 text-sm font-medium ${
                 activeTab === x.key ? "bg-white text-indigo-700 shadow-sm" : "text-slate-500"
               }`}
             >
-              {x.label}
+              {/* Icon-only on phones, text labels on wider screens. */}
+              <span className="text-base sm:hidden">{x.icon}</span>
+              <span className="hidden sm:inline">{x.label}</span>
             </button>
           ))}
         </div>
