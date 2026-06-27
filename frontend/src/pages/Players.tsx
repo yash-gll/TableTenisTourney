@@ -5,7 +5,9 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { AchievementBadges } from "../components/AchievementBadges";
 import { AppShell } from "../components/AppShell";
 import { Avatar } from "../components/Avatar";
+import { FormPills } from "../components/FormPills";
 import { RatingSparkline } from "../components/RatingSparkline";
+import { RivalsCard } from "../components/RivalsCard";
 import { SkillsCard } from "../components/SkillsCard";
 import { Card, Input } from "../components/ui";
 
@@ -117,6 +119,11 @@ export function PublicProfilePage() {
 
         <AchievementBadges playerId={profile.player_id} />
 
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-medium text-slate-500">Recent form</span>
+          <FormPills form={profile.recent_form} />
+        </div>
+
         <div className="grid grid-cols-3 gap-2">
           <Stat label="Played" value={s.matches_played} />
           <Stat label="Wins" value={s.wins} />
@@ -127,6 +134,13 @@ export function PublicProfilePage() {
         </div>
 
         <RatingSparkline playerId={profile.player_id} />
+
+        <div>
+          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
+            Rivalries
+          </h2>
+          <RivalsCard playerId={profile.player_id} />
+        </div>
 
         <div>
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">Skills</h2>

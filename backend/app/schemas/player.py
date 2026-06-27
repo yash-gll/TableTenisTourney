@@ -56,6 +56,20 @@ class PublicProfileOut(BaseModel):
     current_rating: int
     highest_rating: int
     stats: PlayerStatsOut
+    recent_form: list[str] = []  # most-recent-first ["W","L",...]
+
+
+class RivalOut(BaseModel):
+    opponent_id: uuid.UUID
+    opponent_name: str
+    meetings: int
+    wins: int
+    losses: int
+
+
+class PlayerRivalsOut(BaseModel):
+    player_id: uuid.UUID
+    rivals: list[RivalOut]
 
 
 class BadgeOut(BaseModel):

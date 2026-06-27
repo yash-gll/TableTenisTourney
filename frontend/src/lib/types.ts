@@ -63,6 +63,20 @@ export interface PublicProfile {
   current_rating: number;
   highest_rating: number;
   stats: PlayerStats;
+  recent_form: string[];
+}
+
+export interface Rival {
+  opponent_id: string;
+  opponent_name: string;
+  meetings: number;
+  wins: number;
+  losses: number;
+}
+
+export interface PlayerRivals {
+  player_id: string;
+  rivals: Rival[];
 }
 
 export interface Badge {

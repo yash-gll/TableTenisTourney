@@ -1,4 +1,5 @@
 import uuid
+from collections import defaultdict
 
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
@@ -93,6 +94,86 @@ class PlayerService:
             tournaments_played=int(tournaments_played),
             tournament_wins=int(tournament_wins),
         )
+
+    def _team_ids(self, player_id: uuid.UUID) -> list[uuid.UUID]:
+        return list(
+            self.db.execute(
+                select(TeamMember.team_id).where(TeamMember.player_id == player_id)
+            ).scalars()
+        )
+
+    def recent_form(self, player_id: uuid.UUID, n: int = 5) -> list[str]:
+        """Most-recent-first list of 'W'/'L' for the player's last n matches."""
+        team_ids = self._team_ids(player_id)
+        if not team_ids:
+            return []
+        matches = self.db.execute(
+            select(Match)
+            .where(
+                Match.status == MatchStatus.COMPLETED,
+                or_(Match.team_a_id.in_(team_ids), Match.team_b_id.in_(team_ids)),
+            )
+            .order_by(Match.completed_at.desc())
+            .limit(n)
+        ).scalars().all()
+        return ["W" if m.winner_team_id in team_ids else "L" for m in matches]
+
+    def rivals(self, player_id: uuid.UUID) -> list[dict]:
+        """Head-to-head record vs each opponent player, most-played first."""
+        team_ids = set(self._team_ids(player_id))
+        if not team_ids:
+            return []
+        matches = self.db.execute(
+            select(Match).where(
+                Match.status == MatchStatus.COMPLETED,
+                or_(Match.team_a_id.in_(team_ids), Match.team_b_id.in_(team_ids)),
+            )
+        ).scalars().all()
+
+        encounters: list[tuple[uuid.UUID, bool]] = []  # (opponent_team_id, player_won)
+        opp_team_ids: set[uuid.UUID] = set()
+        for m in matches:
+            if m.team_a_id in team_ids and m.team_b_id is not None:
+                opp = m.team_b_id
+            elif m.team_b_id in team_ids and m.team_a_id is not None:
+                opp = m.team_a_id
+            else:
+                continue
+            opp_team_ids.add(opp)
+            encounters.append((opp, m.winner_team_id in team_ids))
+        if not opp_team_ids:
+            return []
+
+        member_rows = self.db.execute(
+            select(TeamMember.team_id, PlayerProfile.id, PlayerProfile.display_name)
+            .join(PlayerProfile, PlayerProfile.id == TeamMember.player_id)
+            .where(TeamMember.team_id.in_(opp_team_ids))
+        ).all()
+        team_members: dict[uuid.UUID, list[tuple[uuid.UUID, str]]] = defaultdict(list)
+        for team_id, pid, name in member_rows:
+            team_members[team_id].append((pid, name))
+
+        agg: dict[uuid.UUID, dict] = defaultdict(lambda: {"name": "", "meetings": 0, "wins": 0})
+        for opp_team, won in encounters:
+            for pid, name in team_members.get(opp_team, []):
+                rec = agg[pid]
+                rec["name"] = name
+                rec["meetings"] += 1
+                if won:
+                    rec["wins"] += 1
+
+        rivals = [
+            {
+                "opponent_id": pid,
+                "opponent_name": rec["name"],
+                "meetings": rec["meetings"],
+                "wins": rec["wins"],
+                "losses": rec["meetings"] - rec["wins"],
+            }
+            for pid, rec in agg.items()
+        ]
+        rivals.sort(key=lambda r: (-r["meetings"], -r["wins"]))
+        return rivals
 
     def achievements(self, player_id: uuid.UUID) -> list[Badge]:
         team_ids = list(

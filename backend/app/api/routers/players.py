@@ -12,9 +12,11 @@ from app.schemas.player import (
     BadgeOut,
     PlayerAchievementsOut,
     PlayerProfileOut,
+    PlayerRivalsOut,
     ProfileUpdate,
     PublicPlayerOut,
     PublicProfileOut,
+    RivalOut,
 )
 from app.schemas.skill import PlayerSkillsOut, SkillItem
 from app.services.player_service import PlayerService
@@ -69,6 +71,17 @@ def get_public_profile(player_id: uuid.UUID, db: Session = Depends(get_db)) -> P
         current_rating=profile.current_rating,
         highest_rating=profile.highest_rating,
         stats=service.stats(player_id),
+        recent_form=service.recent_form(player_id),
+    )
+
+
+@router.get("/{player_id}/rivals", response_model=PlayerRivalsOut)
+def get_player_rivals(player_id: uuid.UUID, db: Session = Depends(get_db)) -> PlayerRivalsOut:
+    service = PlayerService(db)
+    service.get_profile(player_id)
+    return PlayerRivalsOut(
+        player_id=player_id,
+        rivals=[RivalOut(**r) for r in service.rivals(player_id)],
     )
 
 

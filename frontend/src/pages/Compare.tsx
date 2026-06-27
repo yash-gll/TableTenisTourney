@@ -4,9 +4,10 @@ import { useSearchParams } from "react-router-dom";
 
 import { AppShell } from "../components/AppShell";
 import { Avatar } from "../components/Avatar";
+import { FormPills } from "../components/FormPills";
 import { Card, Input } from "../components/ui";
 import { api } from "../lib/api";
-import type { PlayerSkills, PublicPlayer, PublicProfile } from "../lib/types";
+import type { PlayerRivals, PlayerSkills, PublicPlayer, PublicProfile } from "../lib/types";
 
 function usePlayer(id: string | null) {
   const profile = useQuery({
@@ -110,6 +111,14 @@ export function ComparePage() {
   const a = usePlayer(aId);
   const b = usePlayer(bId);
 
+  // Head-to-head: A's record against B (from A's rivals).
+  const h2h = useQuery({
+    queryKey: ["rivals", aId],
+    queryFn: () => api<PlayerRivals>(`/players/${aId}/rivals`),
+    enabled: !!aId && !!bId,
+  });
+  const record = h2h.data?.rivals.find((r) => r.opponent_id === bId);
+
   const setSlot = (slot: "a" | "b", id: string) => {
     const next = new URLSearchParams(params);
     next.set(slot, id);
@@ -139,6 +148,27 @@ export function ComparePage() {
 
         {a.profile && b.profile && (
           <>
+            <Card>
+              <div className="text-center text-xs font-semibold uppercase text-slate-500">
+                Head-to-head
+              </div>
+              {record ? (
+                <div className="mt-1 text-center text-lg font-bold tabular-nums">
+                  {record.wins} <span className="text-slate-400">–</span> {record.losses}
+                  <div className="text-xs font-normal text-slate-500">
+                    {record.meetings} {record.meetings === 1 ? "meeting" : "meetings"}
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-1 text-center text-sm text-slate-500">Haven't played yet</div>
+              )}
+              <div className="mt-3 flex items-center justify-between">
+                <FormPills form={a.profile.recent_form} />
+                <span className="text-xs uppercase text-slate-400">form</span>
+                <FormPills form={b.profile.recent_form} />
+              </div>
+            </Card>
+
             <Card className="py-1">
               <Row label="Rating" a={a.profile.current_rating} b={b.profile.current_rating} />
               <Row label="Peak" a={a.profile.highest_rating} b={b.profile.highest_rating} />
