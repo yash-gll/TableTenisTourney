@@ -1,0 +1,27 @@
+# Render blueprint for the FastAPI backend (Postgres lives on Neon).
+# In Render: New + → Blueprint → pick this repo. Set the sync:false vars after.
+services:
+  - type: web
+    name: tt-tourney-backend
+    runtime: docker
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: oregon
+    healthCheckPath: /api/v1/health
+    autoDeploy: true
+    # Run migrations on each deploy, then serve on Render's $PORT.
+    dockerCommand: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL # Neon connection string (postgresql+psycopg://...?sslmode=require)
+        sync: false
+      - key: FRONTEND_URL # your Vercel URL, e.g. https://tt-tourney.vercel.app
+        sync: false
+      - key: CORS_ORIGINS # same Vercel URL(s), comma-separated
+        sync: false
+      - key: RATE_LIMIT_ENABLED
+        value: "true"
+      - key: LOG_VERIFICATION_LINKS
+        value: "false"

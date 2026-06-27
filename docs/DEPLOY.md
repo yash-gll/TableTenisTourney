@@ -1,5 +1,44 @@
 # Deployment — free tier
 
+## Recommended path: Render + Neon + Vercel
+
+Deploys straight from GitHub with minimal CLI. Config lives in `render.yaml`
+(backend) and `frontend/vercel.json` (SPA routing).
+
+**0. Push to GitHub** (Render & Vercel deploy from the repo).
+
+**1. Database — Neon** ([neon.tech](https://neon.tech))
+- Create a project; copy the connection string and make it the SQLAlchemy form:
+  `postgresql+psycopg://USER:PASSWORD@HOST/dbname?sslmode=require`
+
+**2. Backend — Render** ([render.com](https://render.com))
+- New + → **Blueprint** → select your repo (it reads `render.yaml`).
+- After it creates `tt-tourney-backend`, set the `sync:false` env vars:
+  - `DATABASE_URL` = the Neon string from step 1
+  - `FRONTEND_URL` / `CORS_ORIGINS` = your Vercel URL (fill in after step 3, then redeploy)
+- Migrations run automatically on deploy (`alembic upgrade head` in the start command).
+- Note the service URL, e.g. `https://tt-tourney-backend.onrender.com`.
+- Seed an admin from the Render **Shell** tab:
+  `python -m app.cli.seed_admin --email you@example.com --password 'StrongPass1'`
+  (and optionally `python -m app.cli.seed_players --count 10`).
+
+**3. Frontend — Vercel** ([vercel.com](https://vercel.com))
+- New Project → import the repo. Set **Root Directory = `frontend`**
+  (build `npm run build`, output `dist` — auto-detected for Vite).
+- Add env var `VITE_API_URL = https://tt-tourney-backend.onrender.com/api/v1`.
+- Deploy → you get `https://<project>.vercel.app`.
+
+**4. Wire the two together**
+- Back in Render, set `FRONTEND_URL` and `CORS_ORIGINS` to the Vercel URL and
+  redeploy. Done — open the Vercel URL on your phone and "Add to Home Screen".
+
+> Render's free backend sleeps after ~15 min idle; the first request then takes
+> ~30–50s to wake. Fine for personal use.
+
+---
+
+## Alternative: Cloud Run + Neon + Firebase
+
 Target stack (all have free tiers):
 
 - **Postgres** → [Neon](https://neon.tech) (free)
