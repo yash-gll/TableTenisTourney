@@ -57,6 +57,33 @@ def test_player_on_both_sides_rejected(client, db, admin_token):
     assert resp.status_code == 422
 
 
+def test_exhibition_target_points_21(client, db, admin_token):
+    players = [make_approved_player(db, f"tp_{i}@example.com", f"Tp{i}") for i in range(2)]
+    match = client.post(
+        "/api/v1/exhibitions",
+        json={
+            "team_a": {"name": "A", "player_ids": [players[0]]},
+            "team_b": {"name": "B", "player_ids": [players[1]]},
+            "target_points": 21,
+        },
+        headers=_auth(admin_token),
+    ).json()
+
+    for _ in range(21):  # 11 wouldn't be enough to finish a game to 21
+        client.post(
+            f"/api/v1/matches/{match['id']}/points",
+            json={"player_id": players[0], "skill": "smash", "kind": "WIN"},
+            headers=_auth(admin_token),
+        )
+    version = client.get(f"/api/v1/matches/{match['id']}", headers=_auth(admin_token)).json()["version"]
+    done = client.post(
+        f"/api/v1/matches/{match['id']}/points/complete?expected_version={version}",
+        headers=_auth(admin_token),
+    ).json()
+    assert done["status"] == "COMPLETED"
+    assert {done["team_a_score"], done["team_b_score"]} == {21, 0}
+
+
 def test_exhibition_affects_elo_and_skills(client, db, admin_token):
     players, match = _make_exhibition(client, db, admin_token)
     winner, loser = players[0], players[2]

@@ -110,6 +110,7 @@ function CreateExhibition({
   const [bName, setBName] = useState("Team B");
   const [aPlayers, setAPlayers] = useState<SidePlayer[]>([]);
   const [bPlayers, setBPlayers] = useState<SidePlayer[]>([]);
+  const [targetPoints, setTargetPoints] = useState<11 | 21>(11);
   const [picking, setPicking] = useState<"A" | "B" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -122,6 +123,7 @@ function CreateExhibition({
         body: {
           team_a: { name: aName.trim(), player_ids: aPlayers.map((p) => p.id) },
           team_b: { name: bName.trim(), player_ids: bPlayers.map((p) => p.id) },
+          target_points: targetPoints,
         },
       }),
     onSuccess: (m) => onCreated(m.id),
@@ -183,6 +185,27 @@ function CreateExhibition({
           {side("A", aName, setAName, aPlayers, setAPlayers)}
           <div className="text-center text-xs font-medium uppercase tracking-wide text-slate-400">vs</div>
           {side("B", bName, setBName, bPlayers, setBPlayers)}
+        </div>
+
+        <div className="mt-4">
+          <div className="mb-1.5 text-sm font-medium text-slate-700">Play to</div>
+          <div className="flex gap-2">
+            {([11, 21] as const).map((pts) => (
+              <button
+                key={pts}
+                type="button"
+                onClick={() => setTargetPoints(pts)}
+                aria-pressed={targetPoints === pts}
+                className={`flex-1 rounded-xl border py-3 text-sm font-semibold ${
+                  targetPoints === pts
+                    ? "border-indigo-600 bg-indigo-50 text-indigo-700"
+                    : "border-slate-200 text-slate-600 active:bg-slate-50"
+                }`}
+              >
+                {pts} points
+              </button>
+            ))}
+          </div>
         </div>
 
         {error && <p className="mt-3 text-sm text-rose-600">{error}</p>}
