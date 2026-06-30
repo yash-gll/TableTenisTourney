@@ -28,6 +28,17 @@ const SKILLS: { key: string; label: string; icon: string }[] = [
   { key: "consistency", label: "Consistency", icon: "🧱" },
 ];
 
+// Mirror of backend app/domain/skills.py FAULTS. A fault gifts the point to the
+// opponent and counts against the named skill for the player who committed it.
+const FAULTS: { key: string; label: string; icon: string }[] = [
+  { key: "wrong_serve", label: "Wrong serve", icon: "🚫" },
+  { key: "serve_net", label: "Serve into net", icon: "🕸️" },
+  { key: "serve_out", label: "Serve long / out", icon: "📏" },
+  { key: "hit_net", label: "Hit into net", icon: "🕸️" },
+  { key: "hit_out", label: "Hit out / long", icon: "↗️" },
+  { key: "out_of_position", label: "Out of position", icon: "🦶" },
+];
+
 export function PointLogger({ match, teamA, teamB, targetPoints, onClose, onChanged }: Props) {
   const qc = useQueryClient();
   const [pending, setPending] = useState<{ playerId: string; playerName: string } | null>(null);
@@ -47,11 +58,14 @@ export function PointLogger({ match, teamA, teamB, targetPoints, onClose, onChan
 
   const refresh = () => qc.invalidateQueries({ queryKey: ["points", match.id] });
 
-  const logPoint = async (playerId: string, skill: string) => {
+  const logPoint = async (playerId: string, skill: string, kind: "WIN" | "FAULT") => {
     setBusy(true);
     setError(null);
     try {
-      await api(`/matches/${match.id}/points`, { method: "POST", body: { player_id: playerId, skill } });
+      await api(`/matches/${match.id}/points`, {
+        method: "POST",
+        body: { player_id: playerId, skill, kind },
+      });
       setPending(null);
       refresh();
     } catch (e) {
@@ -130,22 +144,42 @@ export function PointLogger({ match, teamA, teamB, targetPoints, onClose, onChan
         {/* Skill picker for the winning player, or the player grid */}
         {pending ? (
           <div className="mt-4">
-            <div className="mb-2 text-sm text-slate-600">
-              How did <span className="font-semibold">{pending.playerName}</span> win the rally?
+            <div className="mb-2 text-sm font-medium text-emerald-700">
+              <span className="font-semibold">{pending.playerName}</span> won the rally with…
             </div>
             <div className="grid grid-cols-2 gap-2">
               {SKILLS.map((sk) => (
                 <button
                   key={sk.key}
                   disabled={busy}
-                  onClick={() => logPoint(pending.playerId, sk.key)}
-                  className="flex items-center gap-2 rounded-xl border border-slate-200 px-3 py-3 text-left text-sm font-medium active:bg-slate-50 disabled:opacity-50"
+                  onClick={() => logPoint(pending.playerId, sk.key, "WIN")}
+                  className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-left text-sm font-medium text-emerald-800 active:bg-emerald-100 disabled:opacity-50"
                 >
                   <span className="text-lg">{sk.icon}</span>
                   {sk.label}
                 </button>
               ))}
             </div>
+
+            <div className="mb-2 mt-4 text-sm font-medium text-rose-600">
+              …or lost the point by a fault
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {FAULTS.map((f) => (
+                <button
+                  key={f.key}
+                  disabled={busy}
+                  onClick={() => logPoint(pending.playerId, f.key, "FAULT")}
+                  className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-3 text-left text-sm font-medium text-rose-700 active:bg-rose-100 disabled:opacity-50"
+                >
+                  <span className="text-lg">{f.icon}</span>
+                  {f.label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-center text-xs text-slate-400">
+              A fault gives the point to the other team and lowers this player's skill.
+            </p>
             <button
               onClick={() => setPending(null)}
               className="mt-2 w-full rounded-lg py-2 text-sm text-slate-500"
@@ -155,7 +189,9 @@ export function PointLogger({ match, teamA, teamB, targetPoints, onClose, onChan
           </div>
         ) : (
           <div className="mt-4 space-y-3">
-            <div className="text-sm text-slate-600">Tap the player who won the rally:</div>
+            <div className="text-sm text-slate-600">
+              Tap the player who won the rally — or made the error:
+            </div>
             {[teamA, teamB].map(
               (team) =>
                 team && (

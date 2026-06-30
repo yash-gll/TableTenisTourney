@@ -103,6 +103,11 @@ export function MatchList({
                     {m.team_a_score}–{m.team_b_score} · {winnerName(m)} won
                   </div>
                 )}
+                {live && (
+                  <div className="mt-1 text-sm font-semibold tabular-nums text-emerald-700">
+                    {m.team_a_score ?? 0}–{m.team_b_score ?? 0}
+                  </div>
+                )}
               </div>
               <span
                 className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${

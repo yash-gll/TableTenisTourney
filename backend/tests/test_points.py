@@ -16,11 +16,16 @@ def _ready_match(client, db, admin_token):
     return tid, team_ids, smasher, match
 
 
-def _log(client, token, match_id, player_id, skill):
+def _log(client, token, match_id, player_id, skill, kind="WIN"):
     return client.post(
         f"/api/v1/matches/{match_id}/points",
-        json={"player_id": player_id, "skill": skill}, headers=_auth(token),
+        json={"player_id": player_id, "skill": skill, "kind": kind}, headers=_auth(token),
     )
+
+
+def _player_on(client, tid, team_id):
+    teams = client.get(f"/api/v1/tournaments/{tid}/teams").json()
+    return next(t for t in teams if t["id"] == team_id)["members"][0]["player_id"]
 
 
 def test_logging_points_derives_skill_on_completion(client, db, admin_token):
@@ -45,6 +50,35 @@ def test_logging_points_derives_skill_on_completion(client, db, admin_token):
     # derived(11) = round(50 + 50*11/26) = 71; unused skills sit at baseline 50.
     assert skills["smash"] == 71
     assert skills["serve"] == 50
+
+
+def test_faults_score_opponent_and_lower_skill(client, db, admin_token):
+    tid, team_ids, _smasher, m = _ready_match(client, db, admin_token)
+    faulter = _player_on(client, tid, team_ids[1])  # a player on team B
+
+    for _ in range(11):  # 11 serve faults by team B -> 11 points to team A
+        _log(client, admin_token, m["id"], faulter, "serve_net", kind="FAULT")
+
+    version = client.get(f"/api/v1/matches/{m['id']}").json()["version"]
+    done = client.post(
+        f"/api/v1/matches/{m['id']}/points/complete?expected_version={version}",
+        headers=_auth(admin_token),
+    ).json()
+    assert done["winner_team_id"] == team_ids[0]  # opponent of the faulting team
+
+    skills = {s["key"]: s["value"] for s in client.get(f"/api/v1/players/{faulter}/skills").json()["skills"]}
+    # derived(wins=0, errors=11) = round(50 - 50*11/26) = 29; faults map to serve.
+    assert skills["serve"] == 29
+
+
+def test_live_score_visible_on_match_row(client, db, admin_token):
+    tid, _team_ids, smasher, m = _ready_match(client, db, admin_token)
+    for _ in range(3):
+        _log(client, admin_token, m["id"], smasher, "smash")
+    # The running tally is mirrored onto the match row so all viewers see it live.
+    match = client.get(f"/api/v1/matches/{m['id']}").json()
+    assert (match["team_a_score"] or 0) + (match["team_b_score"] or 0) == 3
+    assert match["status"] == "IN_PROGRESS"
 
 
 def test_undo_point(client, db, admin_token):

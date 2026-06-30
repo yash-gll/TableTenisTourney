@@ -8,8 +8,13 @@ from app.db.base import Base, UUIDMixin
 
 
 class MatchPoint(UUIDMixin, Base):
-    """One rally, won by a player using a skill — the raw signal that drives
-    play-derived skill ratings. The match score is the count of these per team."""
+    """One rally — the raw signal that drives play-derived skill ratings, and
+    whose per-team count is the live match score.
+
+    ``team_id`` always names the team that *scored* the point. ``kind`` is either
+    ``WIN`` (``player_id`` won the rally via ``skill`` — credit) or ``FAULT``
+    (``player_id`` on the *losing* team committed an error mapped to ``skill`` —
+    debit, point gifted to the opponent)."""
 
     __tablename__ = "match_points"
 
@@ -26,6 +31,7 @@ class MatchPoint(UUIDMixin, Base):
         Uuid(), ForeignKey("player_profiles.id", ondelete="CASCADE"), nullable=False, index=True
     )
     skill: Mapped[str] = mapped_column(String(40), nullable=False)
+    kind: Mapped[str] = mapped_column(String(8), nullable=False, server_default="WIN")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

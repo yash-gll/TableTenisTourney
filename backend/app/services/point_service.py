@@ -38,26 +38,53 @@ class PointService:
             "team_b": counts.get(m.team_b_id, 0),
         }
 
+    def _live_score(self, match: Match) -> dict:
+        """Recompute the running tally and mirror it onto the match row so every
+        viewer polling the match list sees the live score, not just the logger."""
+        score = self.running_score(match.id)
+        match.team_a_score = score["team_a"]
+        match.team_b_score = score["team_b"]
+        return score
+
     def log_point(
-        self, *, match_id: uuid.UUID, player_id: uuid.UUID, skill: str, actor
+        self, *, match_id: uuid.UUID, player_id: uuid.UUID, skill: str, kind: str = "WIN", actor
     ) -> dict:
         match = self._match(match_id)
         if match.status in (MatchStatus.COMPLETED, MatchStatus.CANCELLED, MatchStatus.VOID):
             raise errors.match_not_editable("This match is closed.")
-        if skill not in skills_domain.SKILL_KEYS:
-            raise errors.invalid_skill_rating(f"Unknown skill '{skill}'.")
         if match.team_a_id is None or match.team_b_id is None:
             raise errors.match_not_editable("Both teams must be set.")
 
+        kind = kind.upper()
+        if kind not in ("WIN", "FAULT"):
+            raise errors.invalid_skill_rating(f"Unknown point kind '{kind}'.")
+        if kind == "WIN":
+            if skill not in skills_domain.SKILL_KEYS:
+                raise errors.invalid_skill_rating(f"Unknown skill '{skill}'.")
+            mapped_skill = skill
+        else:
+            if skill not in skills_domain.FAULT_KEYS:
+                raise errors.invalid_skill_rating(f"Unknown fault '{skill}'.")
+            mapped_skill = skills_domain.FAULT_SKILL[skill]
+
         # The player must belong to one of the two teams (find which).
-        team_id = self.db.execute(
+        player_team = self.db.execute(
             select(TeamMember.team_id).where(
                 TeamMember.player_id == player_id,
                 TeamMember.team_id.in_([match.team_a_id, match.team_b_id]),
             )
         ).scalar_one_or_none()
-        if team_id is None:
+        if player_team is None:
             raise errors.invalid_prediction()  # player not in this match
+
+        # A winning shot scores for the player's team; a fault gifts the point
+        # to the opponent (but is still attributed to the erring player).
+        if kind == "WIN":
+            scoring_team = player_team
+        else:
+            scoring_team = (
+                match.team_b_id if player_team == match.team_a_id else match.team_a_id
+            )
 
         # First point auto-starts the match.
         if match.status == MatchStatus.SCHEDULED:
@@ -75,13 +102,16 @@ class PointService:
             MatchPoint(
                 match_id=match_id,
                 tournament_id=match.tournament_id,
-                team_id=team_id,
+                team_id=scoring_team,
                 player_id=player_id,
-                skill=skill,
+                skill=mapped_skill,
+                kind=kind,
             )
         )
+        self.db.flush()
+        score = self._live_score(match)
         self.db.commit()
-        return self.running_score(match_id)
+        return score
 
     def undo_last(self, *, match_id: uuid.UUID) -> dict:
         match = self._match(match_id)
@@ -95,8 +125,10 @@ class PointService:
         ).scalar_one_or_none()
         if last is not None:
             self.db.delete(last)
-            self.db.commit()
-        return self.running_score(match_id)
+            self.db.flush()
+        score = self._live_score(match)
+        self.db.commit()
+        return score
 
     # -- skill derivation --------------------------------------------------
 
@@ -107,21 +139,24 @@ class PointService:
         if profile is None:
             return
         rows = self.db.execute(
-            select(MatchPoint.skill, func.count())
+            select(MatchPoint.skill, MatchPoint.kind, func.count())
             .join(Match, Match.id == MatchPoint.match_id)
             .where(
                 MatchPoint.player_id == player_id,
                 Match.status == MatchStatus.COMPLETED,
             )
-            .group_by(MatchPoint.skill)
+            .group_by(MatchPoint.skill, MatchPoint.kind)
         ).all()
-        counts = {skill: int(c) for skill, c in rows}
+        wins: dict[str, int] = {}
+        errors_: dict[str, int] = {}
+        for skill, kind, count in rows:
+            (wins if kind == "WIN" else errors_)[skill] = int(count)
         pinned = profile.skill_overrides or {}
         ratings = dict(profile.skill_ratings or {})
         for key, _label in skills_domain.SKILL_ATTRIBUTES:
             if key in pinned:
                 continue
-            ratings[key] = derived_skill(counts.get(key, 0))
+            ratings[key] = derived_skill(wins.get(key, 0), errors_.get(key, 0))
         profile.skill_ratings = ratings
 
     def recompute_for_match(self, match: Match) -> None:

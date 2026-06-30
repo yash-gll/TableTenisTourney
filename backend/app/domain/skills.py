@@ -22,17 +22,34 @@ DEFAULT_SKILL = 50
 # Saturation constant for play-derived skills (higher = slower climb).
 DERIVATION_K = 15
 
+# Faults: a point lost to an unforced error. Each gifts the rally to the
+# opponent AND counts *against* the named skill for the player who committed it.
+# (key, display label, mapped skill)
+FAULTS: list[tuple[str, str, str]] = [
+    ("wrong_serve", "Wrong serve", "serve"),
+    ("serve_net", "Serve into net", "serve"),
+    ("serve_out", "Serve long / out", "serve"),
+    ("hit_net", "Hit into net", "consistency"),
+    ("hit_out", "Hit out / long", "consistency"),
+    ("out_of_position", "Out of position", "footwork"),
+]
+FAULT_KEYS: set[str] = {key for key, _, _ in FAULTS}
+FAULT_SKILL: dict[str, str] = {key: skill for key, _, skill in FAULTS}
+
 
 def default_ratings() -> dict[str, int]:
     return {key: DEFAULT_SKILL for key, _ in SKILL_ATTRIBUTES}
 
 
-def derived_skill(winners: int) -> int:
-    """Map a player's count of points won via a skill to a 0–100 rating.
+def derived_skill(wins: int, errors: int = 0) -> int:
+    """Map a player's net points (wins minus faults) for a skill to a 0–100 rating.
 
-    Baseline 50, climbing toward 100 with diminishing returns (winners-only, so
-    a skill is a strength signal that only rises with demonstrated success)."""
-    return round(DEFAULT_SKILL + (100 - DEFAULT_SKILL) * winners / (winners + DERIVATION_K))
+    Baseline 50; winning rallies with the skill push toward 100, faults pull
+    toward 0, both with diminishing returns. Symmetric around the baseline, so a
+    clean record (errors=0) reduces to the old winners-only curve."""
+    net = wins - errors
+    raw = DEFAULT_SKILL + (100 - DEFAULT_SKILL) * net / (abs(net) + DERIVATION_K)
+    return max(SKILL_MIN, min(SKILL_MAX, round(raw)))
 
 
 def labelled(stored: dict | None) -> list[dict]:

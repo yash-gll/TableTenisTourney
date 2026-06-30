@@ -17,7 +17,8 @@ router = APIRouter(prefix="/matches/{match_id}/points", tags=["points"])
 
 class LogPointRequest(BaseModel):
     player_id: uuid.UUID
-    skill: str
+    skill: str  # a skill key when kind="WIN", a fault key when kind="FAULT"
+    kind: str = "WIN"
 
 
 class RunningScore(BaseModel):
@@ -38,7 +39,7 @@ def log_point(
     db: Session = Depends(get_db),
 ) -> RunningScore:
     score = PointService(db).log_point(
-        match_id=match_id, player_id=body.player_id, skill=body.skill, actor=actor
+        match_id=match_id, player_id=body.player_id, skill=body.skill, kind=body.kind, actor=actor
     )
     return RunningScore(**score)
 
