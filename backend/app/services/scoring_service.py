@@ -118,6 +118,22 @@ class ScoringService:
         self.db.refresh(match)
         return match
 
+    def complete_from_points(
+        self, *, match_id: uuid.UUID, expected_version: int, actor: User, meta: dict
+    ) -> Match:
+        """Complete a match whose score is the tally of logged points."""
+        from app.services.point_service import PointService
+
+        match = self.get_match(match_id)
+        if match.status not in (MatchStatus.SCHEDULED, MatchStatus.IN_PROGRESS):
+            raise errors.match_not_editable("Only a scheduled or in-progress match can be completed.")
+        self._check_version(match, expected_version)
+        score = PointService(self.db).running_score(match_id)
+        return self.complete_match(
+            match_id=match_id, a=score["team_a"], b=score["team_b"],
+            expected_version=expected_version, actor=actor, meta=meta,
+        )
+
     def correct_match(
         self, *, match_id: uuid.UUID, a: int, b: int, expected_version: int, reason: str,
         reset_dependents: bool, actor: User, meta: dict,
@@ -163,11 +179,14 @@ class ScoringService:
 
     def _after_result(self, match: Match, tournament: Tournament) -> None:
         # Apply Elo for the completed match (group or bracket) first.
+        from app.services.point_service import PointService
         from app.services.prediction_service import PredictionService
         from app.services.rating_service import RatingService
 
         RatingService(self.db).apply_match(match)
         PredictionService(self.db).evaluate_match(match)
+        # Update players' skills from the points they won this match.
+        PointService(self.db).recompute_for_match(match)
 
         if match.stage == MatchStage.GROUP:
             self._maybe_complete_group(tournament)

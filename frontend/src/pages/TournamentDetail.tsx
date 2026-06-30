@@ -345,6 +345,7 @@ export function TournamentDetail() {
             targetPoints={t.target_points}
             editable={isAdmin && t.status !== "COMPLETED" && t.status !== "FINALIZED"}
             onChanged={invalidate}
+            teams={teams ?? []}
             canPredict={canPredict}
             predictions={predictionMap}
             odds={oddsMap}

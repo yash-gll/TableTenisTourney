@@ -37,8 +37,10 @@ class PlayerProfile(UUIDMixin, TimestampMixin, Base):
     current_rating: Mapped[int] = mapped_column(Integer, default=STARTING_RATING, nullable=False)
     highest_rating: Mapped[int] = mapped_column(Integer, default=STARTING_RATING, nullable=False)
     bio: Mapped[str | None] = mapped_column(Text)
-    # Admin-curated skill attributes {key: 0-100}; see app/domain/skills.py.
+    # Skill attributes {key: 0-100}. Derived from match play; see app/domain/skills.py.
     skill_ratings: Mapped[dict] = mapped_column(_JSONType, default=dict, server_default="{}")
+    # Admin-pinned skill values {key: value} that play-derivation must not overwrite.
+    skill_overrides: Mapped[dict] = mapped_column(_JSONType, default=dict, server_default="{}")
 
     user: Mapped["User"] = relationship(
         back_populates="profile", foreign_keys=[user_id]

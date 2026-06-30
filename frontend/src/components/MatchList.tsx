@@ -1,8 +1,9 @@
 import { useState } from "react";
 
 import { ApiError, api } from "../lib/api";
-import type { Match, MatchOdds } from "../lib/types";
+import type { Match, MatchOdds, Team } from "../lib/types";
 import { MatchScorer } from "./MatchScorer";
+import { PointLogger } from "./PointLogger";
 import { Button, Card } from "./ui";
 
 interface Props {
@@ -10,6 +11,7 @@ interface Props {
   targetPoints: number;
   editable: boolean;
   onChanged: () => void;
+  teams?: Team[]; // needed for per-point logging (player rosters)
   // Prediction (pick'em) support — shown to players, not in admin-scoring mode.
   canPredict?: boolean;
   predictions?: Record<string, string>; // match_id -> predicted team_id
@@ -29,12 +31,15 @@ export function MatchList({
   targetPoints,
   editable,
   onChanged,
+  teams = [],
   canPredict = false,
   predictions = {},
   odds = {},
   onPredict,
 }: Props) {
   const [scoring, setScoring] = useState<{ match: Match; correct: boolean } | null>(null);
+  const [logging, setLogging] = useState<Match | null>(null);
+  const teamById = (id: string | null) => teams.find((t) => t.id === id);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -175,18 +180,24 @@ export function MatchList({
 
             {editable && (
               <div className="mt-3 flex gap-2">
+                {(m.status === "SCHEDULED" || m.status === "IN_PROGRESS") &&
+                  m.team_a_id &&
+                  m.team_b_id && (
+                    <Button className="flex-1" onClick={() => setLogging(m)}>
+                      Log points
+                    </Button>
+                  )}
                 {m.status === "SCHEDULED" && (
-                  <>
-                    <Button variant="secondary" className="flex-1" onClick={() => start(m)}>
-                      Start
-                    </Button>
-                    <Button className="flex-1" onClick={() => setScoring({ match: m, correct: false })}>
-                      Enter result
-                    </Button>
-                  </>
+                  <Button variant="secondary" className="flex-1" onClick={() => start(m)}>
+                    Start
+                  </Button>
                 )}
-                {m.status === "IN_PROGRESS" && (
-                  <Button className="flex-1" onClick={() => setScoring({ match: m, correct: false })}>
+                {(m.status === "SCHEDULED" || m.status === "IN_PROGRESS") && (
+                  <Button
+                    variant="secondary"
+                    className="flex-1"
+                    onClick={() => setScoring({ match: m, correct: false })}
+                  >
                     Enter result
                   </Button>
                 )}
@@ -214,6 +225,20 @@ export function MatchList({
           onClose={() => setScoring(null)}
           busy={busy}
           error={error}
+        />
+      )}
+
+      {logging && (
+        <PointLogger
+          match={logging}
+          teamA={teamById(logging.team_a_id)}
+          teamB={teamById(logging.team_b_id)}
+          targetPoints={targetPoints}
+          onClose={() => {
+            setLogging(null);
+            onChanged();
+          }}
+          onChanged={onChanged}
         />
       )}
     </div>

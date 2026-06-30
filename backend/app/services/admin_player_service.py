@@ -104,6 +104,10 @@ class AdminPlayerService:
         merged = dict(profile.skill_ratings or {})
         merged.update(ratings)
         profile.skill_ratings = merged
+        # Pin admin-set values so play-derivation won't overwrite them.
+        pinned = dict(profile.skill_overrides or {})
+        pinned.update(ratings)
+        profile.skill_overrides = pinned
         self.audit.record(
             actor_user_id=actor.id,
             action="player.update_skills",

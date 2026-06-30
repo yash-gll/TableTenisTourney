@@ -19,10 +19,20 @@ SKILL_MIN = 0
 SKILL_MAX = 100
 # Baseline assigned when a player is approved; admins tune from here.
 DEFAULT_SKILL = 50
+# Saturation constant for play-derived skills (higher = slower climb).
+DERIVATION_K = 15
 
 
 def default_ratings() -> dict[str, int]:
     return {key: DEFAULT_SKILL for key, _ in SKILL_ATTRIBUTES}
+
+
+def derived_skill(winners: int) -> int:
+    """Map a player's count of points won via a skill to a 0–100 rating.
+
+    Baseline 50, climbing toward 100 with diminishing returns (winners-only, so
+    a skill is a strength signal that only rises with demonstrated success)."""
+    return round(DEFAULT_SKILL + (100 - DEFAULT_SKILL) * winners / (winners + DERIVATION_K))
 
 
 def labelled(stored: dict | None) -> list[dict]:

@@ -2,6 +2,7 @@ from app.db.models.audit_log import AuditLog
 from app.db.models.auth_token import AuthToken, RefreshToken
 from app.db.models.match import Match
 from app.db.models.match_dependency import MatchDependency
+from app.db.models.match_point import MatchPoint
 from app.db.models.match_prediction import MatchPrediction
 from app.db.models.player_profile import PlayerProfile
 from app.db.models.rating_config import RatingConfig
@@ -31,4 +32,5 @@ __all__ = [
     "TournamentResult",
     "TournamentRegistration",
     "MatchPrediction",
+    "MatchPoint",
 ]
