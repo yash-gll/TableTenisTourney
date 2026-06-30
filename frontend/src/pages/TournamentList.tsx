@@ -27,9 +27,18 @@ export function TournamentList() {
     <AppShell title="Tournaments">
       <div className="space-y-4">
         {isAdmin && (
-          <Button className="w-full" onClick={() => navigate("/tournaments/new")}>
-            + New tournament
-          </Button>
+          <div className="flex gap-2">
+            <Button className="flex-1" onClick={() => navigate("/tournaments/new")}>
+              + New tournament
+            </Button>
+            <Button
+              variant="secondary"
+              className="flex-1"
+              onClick={() => navigate("/exhibitions")}
+            >
+              Exhibition matches
+            </Button>
+          </div>
         )}
 
         {isLoading ? (

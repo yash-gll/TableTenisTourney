@@ -63,7 +63,9 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
   // Highlight a tab on its nested routes too (admin management lives under Players).
   const isActive = (to: string) =>
     location.pathname === to ||
-    (to === "/tournaments" && location.pathname.startsWith("/tournaments")) ||
+    (to === "/tournaments" &&
+      (location.pathname.startsWith("/tournaments") ||
+        location.pathname.startsWith("/exhibitions"))) ||
     (to === "/players" && (location.pathname.startsWith("/players") || location.pathname.startsWith("/admin"))) ||
     (to === "/history" && location.pathname.startsWith("/history"));
 

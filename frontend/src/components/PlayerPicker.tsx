@@ -8,7 +8,7 @@ import { Input } from "./ui";
 
 interface Props {
   assignedIds: Set<string>;
-  onPick: (playerId: string) => void;
+  onPick: (playerId: string, player?: AdminPlayer) => void;
   onClose: () => void;
 }
 
@@ -50,7 +50,7 @@ export function PlayerPicker({ assignedIds, onPick, onClose }: Props) {
             candidates.map((p) => (
               <button
                 key={p.player_id}
-                onClick={() => onPick(p.player_id)}
+                onClick={() => onPick(p.player_id, p)}
                 className="flex w-full items-center gap-3 rounded-lg p-2 text-left active:bg-slate-100"
               >
                 <Avatar name={p.display_name} size={40} />

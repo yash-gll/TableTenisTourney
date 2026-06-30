@@ -8,6 +8,8 @@ import { ForgotPassword } from "./pages/ForgotPassword";
 import { HistoryDetailPage, HistoryList } from "./pages/History";
 import { Landing } from "./pages/Landing";
 import { ComparePage } from "./pages/Compare";
+import { ExhibitionDetail } from "./pages/ExhibitionDetail";
+import { Exhibitions } from "./pages/Exhibitions";
 import { Login } from "./pages/Login";
 import { PlayersDirectory, PublicProfilePage } from "./pages/Players";
 import { Register } from "./pages/Register";
@@ -98,6 +100,22 @@ export function AppRoutes() {
         element={
           <RequireAdmin>
             <TournamentCreate />
+          </RequireAdmin>
+        }
+      />
+      <Route
+        path="/exhibitions"
+        element={
+          <RequireAdmin>
+            <Exhibitions />
+          </RequireAdmin>
+        }
+      />
+      <Route
+        path="/exhibitions/:matchId"
+        element={
+          <RequireAdmin>
+            <ExhibitionDetail />
           </RequireAdmin>
         }
       />

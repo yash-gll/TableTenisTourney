@@ -54,7 +54,13 @@ class TournamentService:
         return t
 
     def list_visible(self, *, is_admin: bool) -> list[Tournament]:
-        stmt = select(Tournament).order_by(Tournament.created_at.desc())
+        # Exhibitions are one-off matches with their own admin area — never listed
+        # among real tournaments.
+        stmt = (
+            select(Tournament)
+            .where(Tournament.is_exhibition.is_(False))
+            .order_by(Tournament.created_at.desc())
+        )
         if not is_admin:
             # Guests only see public tournaments in listings.
             stmt = stmt.where(Tournament.visibility == TournamentVisibility.PUBLIC)
@@ -69,11 +75,13 @@ class TournamentService:
             .where(
                 TeamMember.player_id == player_profile_id,
                 Tournament.status.in_(PLAYER_VISIBLE_STATES),
+                Tournament.is_exhibition.is_(False),
             )
         )
         open_for_join = select(Tournament).where(
             Tournament.status == TournamentStatus.REGISTRATION_OPEN,
             Tournament.visibility == TournamentVisibility.PUBLIC,
+            Tournament.is_exhibition.is_(False),
         )
         by_id: dict[uuid.UUID, Tournament] = {}
         for t in self.db.execute(participating).scalars():

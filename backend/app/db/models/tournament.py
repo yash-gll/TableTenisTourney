@@ -35,6 +35,11 @@ class Tournament(UUIDMixin, TimestampMixin, Base):
         default=TournamentVisibility.PUBLIC,
         nullable=False,
     )
+    # An exhibition is a one-off match (its own hidden container): it drives Elo
+    # and skills like any match, but never shows in tournament lists/tables/picks.
+    is_exhibition: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, server_default="false"
+    )
 
     # Scoring configuration (used from Phase 3 onward).
     target_points: Mapped[int] = mapped_column(Integer, default=11, nullable=False)

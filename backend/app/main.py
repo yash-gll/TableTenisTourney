@@ -9,6 +9,7 @@ from app.api.routers import (
     admin_players,
     auth,
     brackets,
+    exhibitions,
     health,
     history,
     leaderboards,
@@ -82,6 +83,7 @@ app.include_router(history.router, prefix=API_PREFIX)
 app.include_router(registrations.router, prefix=API_PREFIX)
 app.include_router(predictions.router, prefix=API_PREFIX)
 app.include_router(points.router, prefix=API_PREFIX)
+app.include_router(exhibitions.router, prefix=API_PREFIX)
 
 
 @app.get("/")
