@@ -85,11 +85,11 @@ export function PlayersDirectory() {
                     </div>
                     <RowStat
                       label="Won /m"
-                      value={p.matches_played ? p.avg_points_for.toFixed(1) : "–"}
+                      value={p.matches_played ? (p.rallies_won / p.matches_played).toFixed(1) : "–"}
                     />
                     <RowStat
                       label="Lost /m"
-                      value={p.matches_played ? p.avg_points_against.toFixed(1) : "–"}
+                      value={p.matches_played ? (p.rallies_lost / p.matches_played).toFixed(1) : "–"}
                     />
                     <span className="shrink-0 text-slate-300">›</span>
                   </Card>
@@ -103,14 +103,7 @@ export function PlayersDirectory() {
   );
 }
 
-function TeammateCard({ t }: { t: Teammate | null }) {
-  if (!t) {
-    return (
-      <div className="w-full rounded-lg border border-dashed border-slate-200 p-3 text-center text-xs text-slate-400">
-        Not enough partners yet
-      </div>
-    );
-  }
+function TeammateCard({ t }: { t: Teammate }) {
   return (
     <Link
       to={`/players/${t.player_id}`}
@@ -212,26 +205,37 @@ export function PublicProfilePage() {
             <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
               Teammates
             </h2>
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <div className="mb-1 text-center text-xs font-semibold uppercase text-emerald-600">
-                  Best
+            {(() => {
+              const mates = teammates.teammates;
+              // Only crown a best/worst when the top and bottom win% actually
+              // differ — otherwise it's a meaningless tie.
+              const distinct = mates.length > 1 && mates[0].win_pct !== mates[mates.length - 1].win_pct;
+              if (!distinct) {
+                return (
+                  <Card>
+                    <p className="text-center text-sm text-slate-500">
+                      Not enough to rank a best and worst yet — partner records are tied.
+                    </p>
+                  </Card>
+                );
+              }
+              return (
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <div className="mb-1 text-center text-xs font-semibold uppercase text-emerald-600">
+                      Best
+                    </div>
+                    <TeammateCard t={mates[0]} />
+                  </div>
+                  <div className="flex-1">
+                    <div className="mb-1 text-center text-xs font-semibold uppercase text-rose-500">
+                      Worst
+                    </div>
+                    <TeammateCard t={mates[mates.length - 1]} />
+                  </div>
                 </div>
-                <TeammateCard t={teammates.teammates[0]} />
-              </div>
-              <div className="flex-1">
-                <div className="mb-1 text-center text-xs font-semibold uppercase text-rose-500">
-                  Worst
-                </div>
-                <TeammateCard
-                  t={
-                    teammates.teammates.length > 1
-                      ? teammates.teammates[teammates.teammates.length - 1]
-                      : null
-                  }
-                />
-              </div>
-            </div>
+              );
+            })()}
           </div>
         )}
 

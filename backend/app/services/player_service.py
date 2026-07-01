@@ -550,7 +550,7 @@ class PlayerService:
                     "win_pct": round(wn / pl * 100, 1),
                 }
             )
-        result.sort(key=lambda r: (-r["win_pct"], -r["matches"]))
+        result.sort(key=lambda r: (-r["win_pct"], -r["matches"], r["name"].lower()))
         return result
 
     def achievements(self, player_id: uuid.UUID) -> list[Badge]:
