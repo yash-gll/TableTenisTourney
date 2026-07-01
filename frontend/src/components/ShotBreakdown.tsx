@@ -38,8 +38,7 @@ export function ShotBreakdown({ breakdown, compact = false }: { breakdown: Playe
       </div>
       {!compact && (
         <p className="-mt-1 text-xs text-slate-400">
-          Points this player personally decided (won or lost). Each point is credited to one
-          player, so teammates' totals differ.
+          Rallies this player won (own winners + errors they forced) or lost (own faults).
         </p>
       )}
 

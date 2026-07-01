@@ -82,7 +82,8 @@ class PlayerService:
                         if winner in tids:
                             wins[pid] += 1
 
-        # Rally-level: points this player personally decided (won/lost), one query.
+        # Rally-level: rallies this player won (own winners + errors they forced)
+        # vs lost (own faults), across completed matches — two grouped queries.
         rally_won: dict[uuid.UUID, int] = defaultdict(int)
         rally_lost: dict[uuid.UUID, int] = defaultdict(int)
         for pid, kind, count in self.db.execute(
@@ -92,9 +93,16 @@ class PlayerService:
             .group_by(MatchPoint.player_id, MatchPoint.kind)
         ).all():
             if kind == "WIN":
-                rally_won[pid] = int(count)
+                rally_won[pid] += int(count)
             elif kind == "FAULT":
-                rally_lost[pid] = int(count)
+                rally_lost[pid] += int(count)
+        for pid, count in self.db.execute(  # forced-error credits count as wins
+            select(MatchPoint.forcer_id, func.count())
+            .join(Match, Match.id == MatchPoint.match_id)
+            .where(Match.status == MatchStatus.COMPLETED, MatchPoint.forcer_id.in_(pids))
+            .group_by(MatchPoint.forcer_id)
+        ).all():
+            rally_won[pid] += int(count)
 
         out = []
         for p in profiles:
@@ -285,8 +293,13 @@ class PlayerService:
                         faults_by_type[r.detail] += 1
                     else:
                         other_faults += 1
+            # Forcing an opponent's error wins the rally — count it as a win
+            # (matches how skills are derived).
             if r.forcer_id == player_id:
                 points_forced += 1
+                wins += 1
+                if r.forcer_skill and r.forcer_skill in win_by_skill:
+                    win_by_skill[r.forcer_skill] += 1
 
         faults_list = [
             {"key": k, "label": fault_labels[k], "count": faults_by_type[k]}

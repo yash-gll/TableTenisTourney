@@ -111,6 +111,37 @@ def test_forced_error_credits_forcer_and_debits_errer(client, db, admin_token):
     assert errer_skills["consistency"] == 29  # errer debited (hit_net -> consistency)
 
 
+def test_forced_error_counts_as_win_for_forcer(client, db, admin_token):
+    tid, team_ids, _s, m = _ready_match(client, db, admin_token)
+    forcer = _player_on(client, tid, team_ids[0])
+    errer = _player_on(client, tid, team_ids[1])
+    for _ in range(5):
+        client.post(
+            f"/api/v1/matches/{m['id']}/points",
+            json={
+                "player_id": errer, "skill": "hit_net", "kind": "FAULT",
+                "forced_by": forcer, "forcer_skill": "smash",
+            },
+            headers=_auth(admin_token),
+        )
+    version = client.get(f"/api/v1/matches/{m['id']}").json()["version"]
+    client.post(
+        f"/api/v1/matches/{m['id']}/points/complete?expected_version={version}",
+        headers=_auth(admin_token),
+    )
+
+    bd = client.get(f"/api/v1/players/{forcer}/breakdown").json()
+    assert bd["wins"] == 5 and bd["faults"] == 0 and bd["total_points"] == 5
+    assert bd["points_forced"] == 5
+    smash = next(s for s in bd["win_by_skill"] if s["key"] == "smash")
+    assert smash["count"] == 5
+
+    directory = {p["player_id"]: p for p in client.get("/api/v1/players").json()}
+    assert directory[forcer]["rallies_won"] == 5
+    assert directory[forcer]["rally_win_pct"] == 100.0
+    assert directory[errer]["rallies_won"] == 0 and directory[errer]["rallies_lost"] == 5
+
+
 def test_forcer_must_be_opponent(client, db, admin_token):
     tid, team_ids, _s, m = _ready_match(client, db, admin_token)
     errer = _player_on(client, tid, team_ids[1])
