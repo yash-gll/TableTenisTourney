@@ -85,7 +85,10 @@ export function PlayersDirectory() {
                     {/* identity on the left, taking the slack so stats sit on the right */}
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-medium">{p.display_name}</div>
-                      <div className="text-xs text-slate-400">Rating {p.current_rating}</div>
+                      <div className="text-xs text-slate-400">
+                        Rating {p.current_rating} · {p.matches_played}{" "}
+                        {p.matches_played === 1 ? "match" : "matches"}
+                      </div>
                     </div>
                     <RowStat
                       label="Won /m"

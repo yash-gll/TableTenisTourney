@@ -12,7 +12,7 @@ function BarRow({ label, count, total, tone }: { label: string; count: number; t
       <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
         <div className={`h-full rounded-full ${tone}`} style={{ width: `${pct}%` }} />
       </div>
-      <span className="w-14 shrink-0 text-right text-xs tabular-nums text-slate-500">
+      <span className="w-[4.5rem] shrink-0 whitespace-nowrap text-right text-xs tabular-nums text-slate-500">
         {count} · {pct}%
       </span>
     </div>
