@@ -39,6 +39,10 @@ class PublicPlayerOut(BaseModel):
     display_name: str
     current_rating: int
     highest_rating: int
+    matches_played: int = 0
+    wins: int = 0
+    losses: int = 0
+    win_pct: float = 0.0
 
 
 class PlayerStatsOut(BaseModel):

@@ -50,6 +50,52 @@ class PlayerService:
             raise errors.player_not_found()
         return profile
 
+    def directory(self, *, query: str | None, limit: int = 100) -> list[dict]:
+        """Search results plus each player's played/wins, computed in two queries
+        so the ranked list can show basic stats without opening each profile."""
+        profiles = self.search(query=query, limit=limit)
+        if not profiles:
+            return []
+        pids = [p.id for p in profiles]
+
+        player_teams: dict[uuid.UUID, set[uuid.UUID]] = defaultdict(set)
+        all_team_ids: set[uuid.UUID] = set()
+        for pid, tid in self.db.execute(
+            select(TeamMember.player_id, TeamMember.team_id).where(TeamMember.player_id.in_(pids))
+        ).all():
+            player_teams[pid].add(tid)
+            all_team_ids.add(tid)
+
+        played: dict[uuid.UUID, int] = defaultdict(int)
+        wins: dict[uuid.UUID, int] = defaultdict(int)
+        if all_team_ids:
+            matches = self.db.execute(
+                select(Match.team_a_id, Match.team_b_id, Match.winner_team_id).where(
+                    Match.status == MatchStatus.COMPLETED,
+                    or_(Match.team_a_id.in_(all_team_ids), Match.team_b_id.in_(all_team_ids)),
+                )
+            ).all()
+            for a_id, b_id, winner in matches:
+                for pid, tids in player_teams.items():
+                    if a_id in tids or b_id in tids:
+                        played[pid] += 1
+                        if winner in tids:
+                            wins[pid] += 1
+
+        out = []
+        for p in profiles:
+            pl, wn = played.get(p.id, 0), wins.get(p.id, 0)
+            out.append(
+                {
+                    "profile": p,
+                    "matches_played": pl,
+                    "wins": wn,
+                    "losses": pl - wn,
+                    "win_pct": round(wn / pl * 100, 1) if pl else 0.0,
+                }
+            )
+        return out
+
     def stats(self, player_id: uuid.UUID) -> PlayerStatsOut:
         team_ids = list(
             self.db.execute(

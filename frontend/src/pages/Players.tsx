@@ -75,6 +75,14 @@ export function PlayersDirectory() {
                     <div className="min-w-0 flex-1">
                       <div className="font-medium">{p.display_name}</div>
                       <div className="text-sm text-slate-500">Rating {p.current_rating}</div>
+                      {p.matches_played > 0 ? (
+                        <div className="text-xs text-slate-400">
+                          {p.matches_played} played · {p.win_pct}% W ·{" "}
+                          {Math.round(100 - p.win_pct)}% L
+                        </div>
+                      ) : (
+                        <div className="text-xs text-slate-400">No matches yet</div>
+                      )}
                     </div>
                     <span className="text-slate-300">›</span>
                   </Card>

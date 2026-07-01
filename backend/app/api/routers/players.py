@@ -34,15 +34,19 @@ def search_players(
     search: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ) -> list[PublicPlayerOut]:
-    players = PlayerService(db).search(query=search)
+    rows = PlayerService(db).directory(query=search)
     return [
         PublicPlayerOut(
-            player_id=p.id,
-            display_name=p.display_name,
-            current_rating=p.current_rating,
-            highest_rating=p.highest_rating,
+            player_id=r["profile"].id,
+            display_name=r["profile"].display_name,
+            current_rating=r["profile"].current_rating,
+            highest_rating=r["profile"].highest_rating,
+            matches_played=r["matches_played"],
+            wins=r["wins"],
+            losses=r["losses"],
+            win_pct=r["win_pct"],
         )
-        for p in players
+        for r in rows
     ]
 
 

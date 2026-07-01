@@ -46,6 +46,10 @@ export interface PublicPlayer {
   display_name: string;
   current_rating: number;
   highest_rating: number;
+  matches_played: number;
+  wins: number;
+  losses: number;
+  win_pct: number;
 }
 
 export interface PlayerStats {
