@@ -44,7 +44,7 @@ function TeamBuilder({
   onRemove: (id: string) => void;
 }) {
   return (
-    <div className="flex-1 rounded-xl border border-slate-200 p-3">
+    <div className="min-w-0 flex-1 rounded-xl border border-slate-200 p-3">
       <div className="mb-2 text-center text-xs font-semibold uppercase tracking-wide text-slate-400">
         {label}
       </div>
