@@ -78,13 +78,17 @@ export function PointLogger({ match, teamA, teamB, targetPoints, onClose, onChan
     return (sel.teamId === teamA.id ? teamB : teamA).members;
   }, [sel, teamA, teamB]);
 
-  // Whose serve it is now: N serves each (2 to 11, 5 to 21), 1 each at deuce.
-  const currentServer = useMemo(() => {
+  // Whose serve it is now, and to whom. Server rotates every N points (2 to 11,
+  // 5 to 21), and every point at deuce; the receiver rotates with it (ITTF
+  // doubles order: server -> receiver -> server's partner -> receiver's partner).
+  const serve = useMemo(() => {
     if (!firstServer || !teamA || !teamB) return null;
-    const receiver = pairing[firstServer] ?? partnerOf(firstServer);
+    const firstReceiver = pairing[firstServer] ?? partnerOf(firstServer);
     let order: string[];
-    if (isDoubles && receiver) {
-      order = [firstServer, receiver, partnerOf(firstServer), partnerOf(receiver)].filter(Boolean) as string[];
+    if (isDoubles && firstReceiver) {
+      order = [firstServer, firstReceiver, partnerOf(firstServer), partnerOf(firstReceiver)].filter(
+        Boolean,
+      ) as string[];
     } else {
       order = [firstServer, allMembers.find((m) => m.player_id !== firstServer)?.player_id ?? null].filter(
         Boolean,
@@ -95,7 +99,10 @@ export function PointLogger({ match, teamA, teamB, targetPoints, onClose, onChan
     const played = a + b;
     const deuceAt = 2 * (targetPoints - 1);
     const turns = played < deuceAt ? Math.floor(played / per) : deuceAt / per + (played - deuceAt);
-    return order[turns % order.length];
+    return {
+      server: order[turns % order.length],
+      receiver: order[(turns + 1) % order.length],
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firstServer, pairing, isDoubles, a, b, targetPoints, allMembers, teamA, teamB]);
 
@@ -216,9 +223,14 @@ export function PointLogger({ match, teamA, teamB, targetPoints, onClose, onChan
                   active ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-slate-200"
                 }`}
               >
-                {currentServer === m.player_id && (
+                {serve?.server === m.player_id && (
                   <span className="absolute left-2 top-2 text-xs" title="Serving">
                     🏓
+                  </span>
+                )}
+                {serve?.receiver === m.player_id && (
+                  <span className="absolute right-2 top-2 text-[10px] text-slate-400" title="Receiving">
+                    ⇦
                   </span>
                 )}
                 {m.display_name}
@@ -263,9 +275,10 @@ export function PointLogger({ match, teamA, teamB, targetPoints, onClose, onChan
 
         <div className="mt-2 flex items-center justify-between">
           <div className="text-sm">
-            {currentServer ? (
+            {serve ? (
               <span className="font-medium text-slate-700">
-                🏓 <span className="font-semibold">{nameOf(currentServer)}</span> to serve
+                🏓 <span className="font-semibold">{nameOf(serve.server)}</span>
+                <span className="text-slate-400"> → {nameOf(serve.receiver)}</span>
               </span>
             ) : (
               <span className="text-slate-400">First to {targetPoints}</span>
