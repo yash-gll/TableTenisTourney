@@ -29,7 +29,7 @@ class MatchOut(BaseModel):
 
 
 class LiveMatchOut(BaseModel):
-    """A spectatable in-progress match, with the running score already on the row."""
+    """A spectatable match, with the running/final score already on the row."""
 
     id: uuid.UUID
     tournament_id: uuid.UUID
@@ -41,6 +41,13 @@ class LiveMatchOut(BaseModel):
     team_b_score: int | None
     status: MatchStatus
     target_points: int
+    winner_name: str | None = None
+
+
+class SpectatorBoard(BaseModel):
+    live: list[LiveMatchOut]
+    upcoming: list[LiveMatchOut]
+    recent: list[LiveMatchOut]
 
 
 class CompleteRequest(BaseModel):

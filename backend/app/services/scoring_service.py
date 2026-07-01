@@ -36,22 +36,38 @@ class ScoringService:
             raise errors.match_not_found()
         return match
 
-    def live_matches(self) -> list[tuple[Match, Tournament]]:
-        """Every match currently in progress that anyone may spectate — all
-        exhibitions plus non-private tournaments. Private tournaments stay hidden."""
-        rows = self.db.execute(
-            select(Match, Tournament)
-            .join(Tournament, Tournament.id == Match.tournament_id)
-            .where(
-                Match.status == MatchStatus.IN_PROGRESS,
-                or_(
-                    Tournament.is_exhibition.is_(True),
-                    Tournament.visibility != TournamentVisibility.PRIVATE,
-                ),
+    def spectator_board(self) -> dict[str, list[tuple[Match, Tournament]]]:
+        """Matches anyone may spectate — live now, up next, and recently finished —
+        across all exhibitions plus non-private tournaments (private stay hidden)."""
+        visible = or_(
+            Tournament.is_exhibition.is_(True),
+            Tournament.visibility != TournamentVisibility.PRIVATE,
+        )
+        base = select(Match, Tournament).join(Tournament, Tournament.id == Match.tournament_id)
+
+        live = self.db.execute(
+            base.where(Match.status == MatchStatus.IN_PROGRESS, visible).order_by(
+                Match.created_at.desc()
             )
-            .order_by(Match.created_at.desc())
         ).all()
-        return [(m, t) for m, t in rows]
+        upcoming = self.db.execute(
+            base.where(
+                Match.status == MatchStatus.SCHEDULED,
+                Match.team_a_id.isnot(None),
+                Match.team_b_id.isnot(None),
+                visible,
+            ).order_by(Match.created_at.asc()).limit(20)
+        ).all()
+        recent = self.db.execute(
+            base.where(Match.status == MatchStatus.COMPLETED, visible).order_by(
+                Match.completed_at.desc()
+            ).limit(10)
+        ).all()
+        return {
+            "live": [(m, t) for m, t in live],
+            "upcoming": [(m, t) for m, t in upcoming],
+            "recent": [(m, t) for m, t in recent],
+        }
 
     def _tournament(self, match: Match) -> Tournament:
         t = self.db.get(Tournament, match.tournament_id)

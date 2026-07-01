@@ -248,6 +248,7 @@ export interface LiveMatch {
   team_b_score: number | null;
   status: MatchStatus;
   target_points: number;
+  winner_name: string | null;
 }
 
 export interface Standing {
