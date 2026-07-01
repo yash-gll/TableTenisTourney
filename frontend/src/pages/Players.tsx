@@ -107,18 +107,25 @@ export function PlayersDirectory() {
   );
 }
 
-function TeammateCard({ t }: { t: Teammate }) {
+function TeammateCard({ t, tone }: { t: Teammate; tone: "best" | "worst" }) {
+  const c =
+    tone === "best"
+      ? { text: "text-emerald-600", ring: "ring-emerald-300", bg: "bg-emerald-50", border: "border-emerald-200", emoji: "🤝" }
+      : { text: "text-rose-500", ring: "ring-rose-300", bg: "bg-rose-50", border: "border-rose-200", emoji: "💤" };
   return (
     <Link
       to={`/players/${t.player_id}`}
-      className="block w-full rounded-lg border border-slate-200 p-3 text-center active:bg-slate-50"
+      className={`block w-full rounded-xl border ${c.border} ${c.bg} p-3 text-center active:opacity-80`}
     >
       <div className="flex justify-center">
-        <Avatar name={t.name} size={40} />
+        <div className={`rounded-full ring-2 ${c.ring}`}>
+          <Avatar name={t.name} size={44} />
+        </div>
       </div>
-      <div className="mt-1 truncate text-sm font-medium">{t.name}</div>
-      <div className="text-xs text-slate-500">
-        {t.wins}-{t.losses} · {t.win_pct}%
+      <div className="mt-1.5 truncate text-sm font-semibold">{t.name}</div>
+      <div className={`text-lg font-bold tabular-nums ${c.text}`}>{t.win_pct}%</div>
+      <div className="text-[11px] text-slate-500">
+        {t.wins}-{t.losses} · {t.matches} {t.matches === 1 ? "match" : "matches"}
       </div>
     </Link>
   );
@@ -253,13 +260,13 @@ export function PublicProfilePage() {
                     <div className="mb-1 text-center text-xs font-semibold uppercase text-emerald-600">
                       Best
                     </div>
-                    <TeammateCard t={mates[0]} />
+                    <TeammateCard t={mates[0]} tone="best" />
                   </div>
                   <div className="flex-1">
                     <div className="mb-1 text-center text-xs font-semibold uppercase text-rose-500">
                       Worst
                     </div>
-                    <TeammateCard t={mates[mates.length - 1]} />
+                    <TeammateCard t={mates[mates.length - 1]} tone="worst" />
                   </div>
                 </div>
               );
