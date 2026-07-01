@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.core.deps import get_request_meta, require_admin
 from app.db.models.user import User
 from app.db.session import get_db
-from app.schemas.exhibition import ExhibitionCreate
+from app.schemas.exhibition import ExhibitionCreate, ExhibitionOut
 from app.schemas.mappers import to_match_out
 from app.schemas.match import MatchOut
 from app.services.exhibition_service import ExhibitionService
@@ -14,12 +14,23 @@ from app.services.exhibition_service import ExhibitionService
 router = APIRouter(prefix="/exhibitions", tags=["exhibitions"])
 
 
-@router.get("", response_model=list[MatchOut])
+def _to_exhibition_out(match, rosters: dict) -> ExhibitionOut:
+    return ExhibitionOut(
+        **to_match_out(match).model_dump(),
+        team_a_players=rosters.get(match.team_a_id, []),
+        team_b_players=rosters.get(match.team_b_id, []),
+    )
+
+
+@router.get("", response_model=list[ExhibitionOut])
 def list_exhibitions(
     _: User = Depends(require_admin),
     db: Session = Depends(get_db),
-) -> list[MatchOut]:
-    return [to_match_out(m) for m in ExhibitionService(db).list_matches()]
+) -> list[ExhibitionOut]:
+    service = ExhibitionService(db)
+    matches = service.list_matches()
+    rosters = service.rosters(matches)
+    return [_to_exhibition_out(m, rosters) for m in matches]
 
 
 @router.post("", response_model=MatchOut, status_code=status.HTTP_201_CREATED)

@@ -8,6 +8,11 @@ import { Button, Card, Input } from "../components/ui";
 import { ApiError, api } from "../lib/api";
 import type { AdminPlayer, Match } from "../lib/types";
 
+interface ExhibitionMatch extends Match {
+  team_a_players: string[];
+  team_b_players: string[];
+}
+
 const STATUS_LABEL: Record<string, string> = {
   SCHEDULED: "Not started",
   IN_PROGRESS: "Live",
@@ -26,7 +31,7 @@ export function Exhibitions() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["exhibitions"],
-    queryFn: () => api<Match[]>("/exhibitions"),
+    queryFn: () => api<ExhibitionMatch[]>("/exhibitions"),
     refetchInterval: 5000,
   });
 
@@ -59,6 +64,13 @@ export function Exhibitions() {
                         <div className="truncate font-medium">
                           {m.team_a_name} <span className="text-slate-400">vs</span> {m.team_b_name}
                         </div>
+                        {(m.team_a_players.length > 0 || m.team_b_players.length > 0) && (
+                          <div className="truncate text-xs text-slate-400">
+                            {m.team_a_players.join(" & ") || "—"}{" "}
+                            <span className="text-slate-300">vs</span>{" "}
+                            {m.team_b_players.join(" & ") || "—"}
+                          </div>
+                        )}
                         {(live || m.status === "COMPLETED") && (
                           <div className="text-sm tabular-nums text-slate-600">
                             {m.team_a_score ?? 0}–{m.team_b_score ?? 0}

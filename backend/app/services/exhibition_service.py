@@ -46,6 +46,23 @@ class ExhibitionService:
             ).scalars()
         )
 
+    def rosters(self, matches: list[Match]) -> dict[uuid.UUID, list[str]]:
+        """team_id -> ordered player display names, for the given matches."""
+        team_ids = {m.team_a_id for m in matches} | {m.team_b_id for m in matches}
+        team_ids.discard(None)
+        if not team_ids:
+            return {}
+        result: dict[uuid.UUID, list[str]] = {}
+        rows = self.db.execute(
+            select(TeamMember.team_id, PlayerProfile.display_name)
+            .join(PlayerProfile, PlayerProfile.id == TeamMember.player_id)
+            .where(TeamMember.team_id.in_(team_ids))
+            .order_by(TeamMember.team_id, TeamMember.member_order)
+        ).all()
+        for team_id, name in rows:
+            result.setdefault(team_id, []).append(name)
+        return result
+
     def get_match(self, match_id: uuid.UUID) -> Match:
         match = self.db.get(Match, match_id)
         if match is None:
