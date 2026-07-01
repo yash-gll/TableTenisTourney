@@ -67,23 +67,17 @@ export function PlayersDirectory() {
               const rank = i + 1;
               return (
                 <Link key={p.player_id} to={`/players/${p.player_id}`} className="block">
-                  <Card className="flex items-center gap-3 active:bg-slate-50">
-                    <span className="w-6 shrink-0 text-center text-sm font-semibold text-slate-500">
+                  <Card className="flex items-center gap-2 active:bg-slate-50">
+                    <span className="w-5 shrink-0 text-center text-sm font-semibold text-slate-500">
                       {MEDALS[rank] ?? rank}
                     </span>
-                    <Avatar name={p.display_name} size={44} />
+                    <RowStat label="Rallies" pct={p.rally_win_pct} n={p.rallies_played} />
+                    <Avatar name={p.display_name} size={40} />
                     <div className="min-w-0 flex-1">
-                      <div className="font-medium">{p.display_name}</div>
-                      <div className="text-sm text-slate-500">Rating {p.current_rating}</div>
-                      {p.matches_played > 0 ? (
-                        <div className="text-xs text-slate-400">
-                          {p.matches_played} played · {p.win_pct}% W ·{" "}
-                          {Math.round(100 - p.win_pct)}% L
-                        </div>
-                      ) : (
-                        <div className="text-xs text-slate-400">No matches yet</div>
-                      )}
+                      <div className="truncate font-medium">{p.display_name}</div>
+                      <div className="text-xs text-slate-400">Rating {p.current_rating}</div>
                     </div>
+                    <RowStat label="Matches" pct={p.win_pct} n={p.matches_played} />
                     <span className="text-slate-300">›</span>
                   </Card>
                 </Link>
@@ -93,6 +87,18 @@ export function PlayersDirectory() {
         )}
       </div>
     </AppShell>
+  );
+}
+
+function RowStat({ label, pct, n }: { label: string; pct: number; n: number }) {
+  return (
+    <div className="w-11 shrink-0 text-center leading-tight">
+      <div className="text-sm font-semibold tabular-nums text-slate-700">
+        {n ? `${Math.round(pct)}%` : "–"}
+      </div>
+      <div className="text-[10px] uppercase tracking-wide text-slate-400">{label}</div>
+      <div className="text-[10px] tabular-nums text-slate-400">{n}</div>
+    </div>
   );
 }
 

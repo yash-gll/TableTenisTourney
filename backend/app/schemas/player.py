@@ -43,6 +43,10 @@ class PublicPlayerOut(BaseModel):
     wins: int = 0
     losses: int = 0
     win_pct: float = 0.0
+    rallies_played: int = 0
+    rallies_won: int = 0
+    rallies_lost: int = 0
+    rally_win_pct: float = 0.0
 
 
 class PlayerStatsOut(BaseModel):

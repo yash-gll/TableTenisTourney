@@ -50,6 +50,10 @@ export interface PublicPlayer {
   wins: number;
   losses: number;
   win_pct: number;
+  rallies_played: number;
+  rallies_won: number;
+  rallies_lost: number;
+  rally_win_pct: number;
 }
 
 export interface PlayerStats {

@@ -82,9 +82,25 @@ class PlayerService:
                         if winner in tids:
                             wins[pid] += 1
 
+        # Rally-level: points this player personally decided (won/lost), one query.
+        rally_won: dict[uuid.UUID, int] = defaultdict(int)
+        rally_lost: dict[uuid.UUID, int] = defaultdict(int)
+        for pid, kind, count in self.db.execute(
+            select(MatchPoint.player_id, MatchPoint.kind, func.count())
+            .join(Match, Match.id == MatchPoint.match_id)
+            .where(Match.status == MatchStatus.COMPLETED, MatchPoint.player_id.in_(pids))
+            .group_by(MatchPoint.player_id, MatchPoint.kind)
+        ).all():
+            if kind == "WIN":
+                rally_won[pid] = int(count)
+            elif kind == "FAULT":
+                rally_lost[pid] = int(count)
+
         out = []
         for p in profiles:
             pl, wn = played.get(p.id, 0), wins.get(p.id, 0)
+            rw, rl = rally_won.get(p.id, 0), rally_lost.get(p.id, 0)
+            rp = rw + rl
             out.append(
                 {
                     "profile": p,
@@ -92,6 +108,10 @@ class PlayerService:
                     "wins": wn,
                     "losses": pl - wn,
                     "win_pct": round(wn / pl * 100, 1) if pl else 0.0,
+                    "rallies_played": rp,
+                    "rallies_won": rw,
+                    "rallies_lost": rl,
+                    "rally_win_pct": round(rw / rp * 100, 1) if rp else 0.0,
                 }
             )
         return out

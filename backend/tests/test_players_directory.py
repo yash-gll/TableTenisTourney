@@ -34,3 +34,7 @@ def test_directory_includes_basic_stats(client, db, admin_token):
     assert directory[loser]["matches_played"] == 1
     assert directory[loser]["win_pct"] == 0.0
     assert directory[loser]["losses"] == 1
+    # Rally-level: the smasher decided 11 rallies, all wins.
+    assert directory[winner]["rallies_played"] == 11
+    assert directory[winner]["rally_win_pct"] == 100.0
+    assert directory[loser]["rallies_played"] == 0

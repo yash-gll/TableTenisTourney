@@ -45,6 +45,10 @@ def search_players(
             wins=r["wins"],
             losses=r["losses"],
             win_pct=r["win_pct"],
+            rallies_played=r["rallies_played"],
+            rallies_won=r["rallies_won"],
+            rallies_lost=r["rallies_lost"],
+            rally_win_pct=r["rally_win_pct"],
         )
         for r in rows
     ]
