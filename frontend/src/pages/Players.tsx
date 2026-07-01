@@ -72,12 +72,12 @@ export function PlayersDirectory() {
                       {MEDALS[rank] ?? rank}
                     </span>
                     <RowStat label="Rallies" pct={p.rally_win_pct} n={p.rallies_played} />
+                    <RowStat label="Matches" pct={p.win_pct} n={p.matches_played} />
                     <Avatar name={p.display_name} size={40} />
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-medium">{p.display_name}</div>
                       <div className="text-xs text-slate-400">Rating {p.current_rating}</div>
                     </div>
-                    <RowStat label="Matches" pct={p.win_pct} n={p.matches_played} />
                     <span className="text-slate-300">›</span>
                   </Card>
                 </Link>
