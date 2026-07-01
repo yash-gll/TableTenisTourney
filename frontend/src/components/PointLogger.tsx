@@ -39,11 +39,13 @@ const FAULTS: { key: string; label: string; icon: string }[] = [
 ];
 
 type Fault = (typeof FAULTS)[number];
+type Selected = { playerId: string; playerName: string; teamId: string };
 
 export function PointLogger({ match, teamA, teamB, targetPoints, onClose, onChanged }: Props) {
   const qc = useQueryClient();
-  const [pending, setPending] = useState<{ playerId: string; playerName: string; teamId: string } | null>(null);
-  const [fault, setFault] = useState<Fault | null>(null); // chosen fault, awaiting forced/unforced
+  const [sel, setSel] = useState<Selected | null>(null);
+  const [forced, setForced] = useState(false);
+  const [fault, setFault] = useState<Fault | null>(null); // chosen fault, awaiting forcing skill
   const [forcerId, setForcerId] = useState<string | null>(null);
   const [pairing, setPairing] = useState<Record<string, string>>(match.serve_pairing ?? {});
   const [firstServer, setFirstServer] = useState<string | null>(match.first_server_id ?? null);
@@ -66,56 +68,62 @@ export function PointLogger({ match, teamA, teamB, targetPoints, onClose, onChan
     () => [...(teamA?.members ?? []), ...(teamB?.members ?? [])],
     [teamA, teamB],
   );
-  const nameOf = (id: string | null) =>
-    allMembers.find((m) => m.player_id === id)?.display_name ?? "";
+  const nameOf = (id: string | null) => allMembers.find((m) => m.player_id === id)?.display_name ?? "";
   const partnerOf = (id: string) => {
     const team = teamA?.members.some((m) => m.player_id === id) ? teamA : teamB;
     return team?.members.find((m) => m.player_id !== id)?.player_id ?? null;
   };
+  const opponents = useMemo<TeamMember[]>(() => {
+    if (!sel || !teamA || !teamB) return [];
+    return (sel.teamId === teamA.id ? teamB : teamA).members;
+  }, [sel, teamA, teamB]);
 
-  // Whose serve it is now, from the fixed rotation: N serves each (2 to 11, 5 to
-  // 21), then 1 each at deuce (both at target-1).
+  // Whose serve it is now: N serves each (2 to 11, 5 to 21), 1 each at deuce.
   const currentServer = useMemo(() => {
     if (!firstServer || !teamA || !teamB) return null;
-    const receiver = pairing[firstServer] ?? partnerOf(firstServer); // fallback
+    const receiver = pairing[firstServer] ?? partnerOf(firstServer);
     let order: string[];
     if (isDoubles && receiver) {
-      const sp = partnerOf(firstServer);
-      const rp = partnerOf(receiver);
-      order = [firstServer, receiver, sp, rp].filter(Boolean) as string[];
+      order = [firstServer, receiver, partnerOf(firstServer), partnerOf(receiver)].filter(Boolean) as string[];
     } else {
-      const opp =
-        allMembers.find((m) => m.player_id !== firstServer)?.player_id ?? null;
-      order = [firstServer, opp].filter(Boolean) as string[];
+      order = [firstServer, allMembers.find((m) => m.player_id !== firstServer)?.player_id ?? null].filter(
+        Boolean,
+      ) as string[];
     }
     if (order.length < 2) return null;
     const per = targetPoints >= 21 ? 5 : 2;
     const played = a + b;
     const deuceAt = 2 * (targetPoints - 1);
-    const turns =
-      played < deuceAt ? Math.floor(played / per) : deuceAt / per + (played - deuceAt);
+    const turns = played < deuceAt ? Math.floor(played / per) : deuceAt / per + (played - deuceAt);
     return order[turns % order.length];
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firstServer, pairing, isDoubles, a, b, targetPoints, allMembers, teamA, teamB]);
 
-  const opponents = useMemo<TeamMember[]>(() => {
-    if (!pending || !teamA || !teamB) return [];
-    return (pending.teamId === teamA.id ? teamB : teamA).members;
-  }, [pending, teamA, teamB]);
-
   const refresh = () => qc.invalidateQueries({ queryKey: ["points", match.id] });
-
-  const resetPicker = () => {
-    setPending(null);
+  const reset = () => {
+    setSel(null);
+    setForced(false);
     setFault(null);
     setForcerId(null);
+  };
+
+  const select = (m: TeamMember, teamId: string) => {
+    setSel({ playerId: m.player_id, playerName: m.display_name, teamId });
+    setForced(false);
+    setFault(null);
+  };
+
+  const toggleForced = (on: boolean) => {
+    setForced(on);
+    setFault(null);
+    if (on && sel) setForcerId(pairing[sel.playerId] ?? opponents[0]?.player_id ?? null);
   };
 
   const logPoint = async (
     playerId: string,
     skill: string,
     kind: "WIN" | "FAULT",
-    forced?: { forcedBy: string; forcerSkill: string },
+    forcedBy?: { forcedBy: string; forcerSkill: string },
   ) => {
     setBusy(true);
     setError(null);
@@ -126,22 +134,16 @@ export function PointLogger({ match, teamA, teamB, targetPoints, onClose, onChan
           player_id: playerId,
           skill,
           kind,
-          ...(forced ? { forced_by: forced.forcedBy, forcer_skill: forced.forcerSkill } : {}),
+          ...(forcedBy ? { forced_by: forcedBy.forcedBy, forcer_skill: forcedBy.forcerSkill } : {}),
         },
       });
-      resetPicker();
+      reset();
       refresh();
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Failed to log point");
     } finally {
       setBusy(false);
     }
-  };
-
-  // A fault was tapped: hold it and ask forced/unforced (default forcer from serve pairing).
-  const chooseFault = (f: Fault) => {
-    setFault(f);
-    if (pending) setForcerId(pairing[pending.playerId] ?? opponents[0]?.player_id ?? null);
   };
 
   const undo = async () => {
@@ -162,9 +164,7 @@ export function PointLogger({ match, teamA, teamB, targetPoints, onClose, onChan
     setError(null);
     try {
       const fresh = await api<Match>(`/matches/${match.id}`);
-      await api(`/matches/${match.id}/points/complete?expected_version=${fresh.version}`, {
-        method: "POST",
-      });
+      await api(`/matches/${match.id}/points/complete?expected_version=${fresh.version}`, { method: "POST" });
       onChanged();
       onClose();
     } catch (e) {
@@ -175,8 +175,6 @@ export function PointLogger({ match, teamA, teamB, targetPoints, onClose, onChan
     }
   };
 
-  // Given who serves first and who receives first, both the diagonal pairing and
-  // the whole serve rotation are fixed.
   const saveServe = async (server: string, receiver: string) => {
     setError(null);
     let map: Record<string, string>;
@@ -199,6 +197,37 @@ export function PointLogger({ match, teamA, teamB, targetPoints, onClose, onChan
       setError(e instanceof ApiError ? e.message : "Failed to save serve setup");
     }
   };
+
+  const chipBtn = "rounded-xl px-2 py-2.5 text-sm font-medium disabled:opacity-50";
+
+  const teamTiles = (team: Team | undefined) =>
+    team && (
+      <div>
+        <div className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-400">{team.name}</div>
+        <div className="grid grid-cols-2 gap-2">
+          {team.members.map((m) => {
+            const active = sel?.playerId === m.player_id;
+            return (
+              <button
+                key={m.player_id}
+                disabled={busy}
+                onClick={() => select(m, team.id)}
+                className={`relative min-h-[52px] rounded-xl border px-3 py-3 text-sm font-semibold active:bg-indigo-50 disabled:opacity-40 ${
+                  active ? "border-indigo-500 bg-indigo-50 text-indigo-700" : "border-slate-200"
+                }`}
+              >
+                {currentServer === m.player_id && (
+                  <span className="absolute left-2 top-2 text-xs" title="Serving">
+                    🏓
+                  </span>
+                )}
+                {m.display_name}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
 
   return (
     <div className="fixed inset-0 z-30 flex flex-col justify-end bg-black/40" onClick={onClose}>
@@ -231,22 +260,15 @@ export function PointLogger({ match, teamA, teamB, targetPoints, onClose, onChan
             </div>
           ))}
         </div>
-        <p className="mt-1 text-center text-xs text-slate-400">
-          First to {targetPoints} · deuce &amp; early stops OK
-        </p>
 
-        {/* Whose serve it is + serve setup */}
         <div className="mt-2 flex items-center justify-between">
           <div className="text-sm">
             {currentServer ? (
               <span className="font-medium text-slate-700">
                 🏓 <span className="font-semibold">{nameOf(currentServer)}</span> to serve
-                {pairing[currentServer] && (
-                  <span className="text-slate-400"> → {nameOf(pairing[currentServer])}</span>
-                )}
               </span>
             ) : (
-              <span className="text-slate-400">Set who serves first ↦</span>
+              <span className="text-slate-400">First to {targetPoints}</span>
             )}
           </div>
           <button
@@ -286,50 +308,78 @@ export function PointLogger({ match, teamA, teamB, targetPoints, onClose, onChan
                   {nameOf(setupServer)} serves to (diagonal)
                 </div>
                 <div className="flex gap-2">
-                  {(teamA.members.some((m) => m.player_id === setupServer) ? teamB : teamA).members.map(
-                    (o) => (
-                      <button
-                        key={o.player_id}
-                        onClick={() => saveServe(setupServer, o.player_id)}
-                        className={`flex-1 rounded-lg border px-2 py-2 text-sm font-medium ${
-                          pairing[setupServer] === o.player_id
-                            ? "border-indigo-600 bg-indigo-50 text-indigo-700"
-                            : "border-slate-200 text-slate-600"
-                        }`}
-                      >
-                        {o.display_name}
-                      </button>
-                    ),
-                  )}
+                  {(teamA.members.some((m) => m.player_id === setupServer) ? teamB : teamA).members.map((o) => (
+                    <button
+                      key={o.player_id}
+                      onClick={() => saveServe(setupServer, o.player_id)}
+                      className={`flex-1 rounded-lg border px-2 py-2 text-sm font-medium ${
+                        pairing[setupServer] === o.player_id
+                          ? "border-indigo-600 bg-indigo-50 text-indigo-700"
+                          : "border-slate-200 text-slate-600"
+                      }`}
+                    >
+                      {o.display_name}
+                    </button>
+                  ))}
                 </div>
               </>
             )}
           </div>
         )}
 
-        {/* Forced/unforced step (a fault has been chosen) */}
-        {pending && fault ? (
-          <div className="mt-4">
-            <div className="mb-2 text-sm">
-              <span className="font-semibold">{pending.playerName}</span> — {fault.label}. Was it
-              forced?
-            </div>
-            <button
-              disabled={busy}
-              onClick={() => logPoint(pending.playerId, fault.key, "FAULT")}
-              className="mb-3 w-full rounded-xl border border-slate-300 px-3 py-3 text-sm font-medium active:bg-slate-50 disabled:opacity-50"
-            >
-              Unforced — their own mistake
-            </button>
+        {/* Players — always visible; tap one to open its action panel below */}
+        <div className="mt-4 space-y-3">
+          {teamTiles(teamA)}
+          {teamTiles(teamB)}
+        </div>
 
-            <div className="mb-1 text-sm font-medium text-emerald-700">Forced by…</div>
-            {isDoubles && (
-              <div className="mb-2 flex gap-2">
+        {/* Action panel for the selected player */}
+        {sel && (
+          <div className="mt-3 rounded-xl border border-indigo-200 bg-indigo-50/40 p-3">
+            <div className="mb-2 text-sm text-slate-600">
+              <span className="font-semibold text-slate-800">{sel.playerName}</span>
+            </div>
+
+            <div className="mb-1 text-xs font-semibold uppercase tracking-wide text-emerald-600">Won with</div>
+            <div className="grid grid-cols-3 gap-2">
+              {SKILLS.map((sk) => (
+                <button
+                  key={sk.key}
+                  disabled={busy}
+                  onClick={() => logPoint(sel.playerId, sk.key, "WIN")}
+                  className={`${chipBtn} border border-emerald-200 bg-emerald-50 text-emerald-800 active:bg-emerald-100`}
+                >
+                  {sk.icon} {sk.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="mb-1 mt-4 flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wide text-rose-600">Lost by error</span>
+              <div className="flex overflow-hidden rounded-full border border-slate-200 text-xs">
+                <button
+                  onClick={() => toggleForced(false)}
+                  className={`px-3 py-1 font-medium ${!forced ? "bg-slate-700 text-white" : "text-slate-500"}`}
+                >
+                  Unforced
+                </button>
+                <button
+                  onClick={() => toggleForced(true)}
+                  className={`px-3 py-1 font-medium ${forced ? "bg-slate-700 text-white" : "text-slate-500"}`}
+                >
+                  Forced
+                </button>
+              </div>
+            </div>
+
+            {forced && (
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <span className="text-xs text-slate-500">Forced by</span>
                 {opponents.map((o) => (
                   <button
                     key={o.player_id}
                     onClick={() => setForcerId(o.player_id)}
-                    className={`flex-1 rounded-lg border px-2 py-1.5 text-xs font-medium ${
+                    className={`rounded-full border px-2.5 py-1 text-xs font-medium ${
                       forcerId === o.player_id
                         ? "border-emerald-500 bg-emerald-50 text-emerald-700"
                         : "border-slate-200 text-slate-600"
@@ -340,100 +390,47 @@ export function PointLogger({ match, teamA, teamB, targetPoints, onClose, onChan
                 ))}
               </div>
             )}
-            <div className="text-xs text-slate-500">
-              Tap the skill {opponents.find((o) => o.player_id === forcerId)?.display_name ?? "they"}{" "}
-              forced it with:
-            </div>
-            <div className="mt-1 grid grid-cols-2 gap-2">
-              {SKILLS.map((sk) => (
-                <button
-                  key={sk.key}
-                  disabled={busy || !forcerId}
-                  onClick={() =>
-                    forcerId &&
-                    logPoint(pending.playerId, fault.key, "FAULT", {
-                      forcedBy: forcerId,
-                      forcerSkill: sk.key,
-                    })
-                  }
-                  className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-left text-sm font-medium text-emerald-800 active:bg-emerald-100 disabled:opacity-50"
-                >
-                  <span className="text-lg">{sk.icon}</span>
-                  {sk.label}
-                </button>
-              ))}
-            </div>
-            <button onClick={() => setFault(null)} className="mt-2 w-full rounded-lg py-2 text-sm text-slate-500">
-              ← Back
-            </button>
-          </div>
-        ) : pending ? (
-          <div className="mt-4">
-            <div className="mb-2 text-sm font-medium text-emerald-700">
-              <span className="font-semibold">{pending.playerName}</span> won the rally with…
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {SKILLS.map((sk) => (
-                <button
-                  key={sk.key}
-                  disabled={busy}
-                  onClick={() => logPoint(pending.playerId, sk.key, "WIN")}
-                  className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-3 text-left text-sm font-medium text-emerald-800 active:bg-emerald-100 disabled:opacity-50"
-                >
-                  <span className="text-lg">{sk.icon}</span>
-                  {sk.label}
-                </button>
-              ))}
-            </div>
 
-            <div className="mb-2 mt-4 text-sm font-medium text-rose-600">…or lost the point by a fault</div>
-            <div className="grid grid-cols-2 gap-2">
-              {FAULTS.map((f) => (
-                <button
-                  key={f.key}
-                  disabled={busy}
-                  onClick={() => chooseFault(f)}
-                  className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-3 text-left text-sm font-medium text-rose-700 active:bg-rose-100 disabled:opacity-50"
-                >
-                  <span className="text-lg">{f.icon}</span>
-                  {f.label}
+            {!forced || !fault ? (
+              <div className="grid grid-cols-2 gap-2">
+                {FAULTS.map((f) => (
+                  <button
+                    key={f.key}
+                    disabled={busy}
+                    onClick={() => (forced ? setFault(f) : logPoint(sel.playerId, f.key, "FAULT"))}
+                    className={`${chipBtn} border border-rose-200 bg-rose-50 text-rose-700 active:bg-rose-100`}
+                  >
+                    {f.icon} {f.label}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div>
+                <div className="mb-1 text-xs text-slate-500">
+                  {fault.label} — {nameOf(forcerId)} forced it with:
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  {SKILLS.map((sk) => (
+                    <button
+                      key={sk.key}
+                      disabled={busy || !forcerId}
+                      onClick={() =>
+                        forcerId &&
+                        logPoint(sel.playerId, fault.key, "FAULT", {
+                          forcedBy: forcerId,
+                          forcerSkill: sk.key,
+                        })
+                      }
+                      className={`${chipBtn} border border-emerald-200 bg-emerald-50 text-emerald-800 active:bg-emerald-100`}
+                    >
+                      {sk.icon} {sk.label}
+                    </button>
+                  ))}
+                </div>
+                <button onClick={() => setFault(null)} className="mt-2 text-xs text-slate-500">
+                  ← pick a different error
                 </button>
-              ))}
-            </div>
-            <button onClick={resetPicker} className="mt-2 w-full rounded-lg py-2 text-sm text-slate-500">
-              ← Back
-            </button>
-          </div>
-        ) : (
-          <div className="mt-4 space-y-3">
-            <div className="text-sm text-slate-600">Tap the player who won the rally — or made the error:</div>
-            {[teamA, teamB].map(
-              (team) =>
-                team && (
-                  <div key={team.id}>
-                    <div className="mb-1 text-xs font-medium uppercase tracking-wide text-slate-400">
-                      {team.name}
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {team.members.map((mem) => (
-                        <button
-                          key={mem.player_id}
-                          disabled={busy}
-                          onClick={() =>
-                            setPending({
-                              playerId: mem.player_id,
-                              playerName: mem.display_name,
-                              teamId: team.id,
-                            })
-                          }
-                          className="rounded-xl border border-slate-200 px-3 py-3 text-sm font-medium active:bg-indigo-50 disabled:opacity-40"
-                        >
-                          {mem.display_name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ),
+              </div>
             )}
           </div>
         )}
