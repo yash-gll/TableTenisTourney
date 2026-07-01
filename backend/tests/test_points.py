@@ -81,6 +81,65 @@ def test_live_score_visible_on_match_row(client, db, admin_token):
     assert match["status"] == "IN_PROGRESS"
 
 
+def test_forced_error_credits_forcer_and_debits_errer(client, db, admin_token):
+    tid, team_ids, _smasher, m = _ready_match(client, db, admin_token)
+    errer = _player_on(client, tid, team_ids[1])   # team B errs
+    forcer = _player_on(client, tid, team_ids[0])  # team A forced it
+
+    for _ in range(11):  # 11 forced errors -> 11 points to team A
+        client.post(
+            f"/api/v1/matches/{m['id']}/points",
+            json={
+                "player_id": errer, "skill": "hit_net", "kind": "FAULT",
+                "forced_by": forcer, "forcer_skill": "smash",
+            },
+            headers=_auth(admin_token),
+        )
+    score = client.get(f"/api/v1/matches/{m['id']}/points").json()
+    assert score["team_a"] + score["team_b"] == 11  # still one point per rally
+
+    version = client.get(f"/api/v1/matches/{m['id']}").json()["version"]
+    done = client.post(
+        f"/api/v1/matches/{m['id']}/points/complete?expected_version={version}",
+        headers=_auth(admin_token),
+    ).json()
+    assert done["winner_team_id"] == team_ids[0]
+
+    forcer_skills = {s["key"]: s["value"] for s in client.get(f"/api/v1/players/{forcer}/skills").json()["skills"]}
+    errer_skills = {s["key"]: s["value"] for s in client.get(f"/api/v1/players/{errer}/skills").json()["skills"]}
+    assert forcer_skills["smash"] == 71   # forcer credited (wins=11)
+    assert errer_skills["consistency"] == 29  # errer debited (hit_net -> consistency)
+
+
+def test_forcer_must_be_opponent(client, db, admin_token):
+    tid, team_ids, _s, m = _ready_match(client, db, admin_token)
+    errer = _player_on(client, tid, team_ids[1])
+    teammate = client.get(f"/api/v1/tournaments/{tid}/teams").json()
+    partner = next(t for t in teammate if t["id"] == team_ids[1])["members"][1]["player_id"]
+    resp = client.post(
+        f"/api/v1/matches/{m['id']}/points",
+        json={
+            "player_id": errer, "skill": "hit_net", "kind": "FAULT",
+            "forced_by": partner, "forcer_skill": "smash",  # partner, not an opponent
+        },
+        headers=_auth(admin_token),
+    )
+    assert resp.status_code == 422
+
+
+def test_set_serve_pairing(client, db, admin_token):
+    tid, team_ids, _s, m = _ready_match(client, db, admin_token)
+    a = _player_on(client, tid, team_ids[0])
+    b = _player_on(client, tid, team_ids[1])
+    resp = client.put(
+        f"/api/v1/matches/{m['id']}/serve-pairing",
+        json={"pairing": {a: b, b: a}},
+        headers=_auth(admin_token),
+    )
+    assert resp.status_code == 200
+    assert resp.json()["serve_pairing"] == {a: b, b: a}
+
+
 def test_undo_point(client, db, admin_token):
     _tid, _team_ids, smasher, m = _ready_match(client, db, admin_token)
     _log(client, admin_token, m["id"], smasher, "serve")

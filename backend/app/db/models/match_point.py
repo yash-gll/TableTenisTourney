@@ -32,6 +32,12 @@ class MatchPoint(UUIDMixin, Base):
     )
     skill: Mapped[str] = mapped_column(String(40), nullable=False)
     kind: Mapped[str] = mapped_column(String(8), nullable=False, server_default="WIN")
+    # Forced errors only: the opponent who forced the fault gets a skill credit
+    # (this stays one row per rally, so the score and undo are unaffected).
+    forcer_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(), ForeignKey("player_profiles.id", ondelete="SET NULL"), index=True
+    )
+    forcer_skill: Mapped[str | None] = mapped_column(String(40))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )

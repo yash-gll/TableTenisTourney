@@ -175,6 +175,10 @@ def invalid_comparison(message: str) -> AppError:
     return AppError(422, "INVALID_COMPARISON", message)
 
 
+def invalid_serve_pairing(message: str) -> AppError:
+    return AppError(422, "INVALID_SERVE_PAIRING", message)
+
+
 def not_enough_teams(minimum: int) -> AppError:
     return AppError(
         status.HTTP_409_CONFLICT,

@@ -7,7 +7,7 @@ from app.core.deps import get_optional_user, get_request_meta, is_admin_user, re
 from app.db.models.user import User
 from app.db.session import get_db
 from app.schemas.mappers import to_match_out
-from app.schemas.match import CompleteRequest, CorrectRequest, MatchOut
+from app.schemas.match import CompleteRequest, CorrectRequest, MatchOut, ServePairingRequest
 from app.services.scoring_service import ScoringService
 from app.services.tournament_service import TournamentService
 
@@ -33,6 +33,19 @@ def start_match(
     meta: dict = Depends(get_request_meta),
 ) -> MatchOut:
     return to_match_out(ScoringService(db).start_match(match_id=match_id, actor=actor, meta=meta))
+
+
+@router.put("/{match_id}/serve-pairing", response_model=MatchOut)
+def set_serve_pairing(
+    match_id: uuid.UUID,
+    body: ServePairingRequest,
+    actor: User = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> MatchOut:
+    match = ScoringService(db).set_serve_pairing(
+        match_id=match_id, pairing=body.pairing, actor=actor
+    )
+    return to_match_out(match)
 
 
 @router.post("/{match_id}/complete", response_model=MatchOut)

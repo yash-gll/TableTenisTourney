@@ -19,6 +19,10 @@ class LogPointRequest(BaseModel):
     player_id: uuid.UUID
     skill: str  # a skill key when kind="WIN", a fault key when kind="FAULT"
     kind: str = "WIN"
+    # Forced errors only: the opponent who forced the fault, and the skill they
+    # forced it with (earns them a skill credit).
+    forced_by: uuid.UUID | None = None
+    forcer_skill: str | None = None
 
 
 class RunningScore(BaseModel):
@@ -39,7 +43,13 @@ def log_point(
     db: Session = Depends(get_db),
 ) -> RunningScore:
     score = PointService(db).log_point(
-        match_id=match_id, player_id=body.player_id, skill=body.skill, kind=body.kind, actor=actor
+        match_id=match_id,
+        player_id=body.player_id,
+        skill=body.skill,
+        kind=body.kind,
+        forced_by=body.forced_by,
+        forcer_skill=body.forcer_skill,
+        actor=actor,
     )
     return RunningScore(**score)
 

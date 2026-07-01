@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
+    JSON,
     CheckConstraint,
     DateTime,
     Enum,
@@ -13,10 +14,13 @@ from sqlalchemy import (
     UniqueConstraint,
     Uuid,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDMixin
 from app.db.models.enums import MatchStage, MatchStatus
+
+_JSONType = JSON().with_variant(JSONB(), "postgresql")
 
 if TYPE_CHECKING:
     from app.db.models.team import Team
@@ -73,6 +77,9 @@ class Match(UUIDMixin, TimestampMixin, Base):
 
     # Sorted "a|b" of the two team ids; stable key for the unique group pairing.
     pair_key: Mapped[str | None] = mapped_column(String(80))
+    # Diagonal serve pairing {player_id: opponent_id} — drives the forced-error
+    # "who forced it?" auto-suggestion. Null until set (or trivial for singles).
+    serve_pairing: Mapped[dict | None] = mapped_column(_JSONType)
     version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     admin_note: Mapped[str | None] = mapped_column(Text)
     created_by: Mapped[uuid.UUID | None] = mapped_column(

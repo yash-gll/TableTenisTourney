@@ -13,6 +13,7 @@ from app.db.models.enums import (
     TournamentVisibility,
 )
 from app.db.models.match import Match
+from app.db.models.team_member import TeamMember
 from app.db.models.tournament import Tournament
 from app.db.models.user import User
 from app.domain import scoring
@@ -34,6 +35,26 @@ class ScoringService:
         match = self.db.get(Match, match_id)
         if match is None:
             raise errors.match_not_found()
+        return match
+
+    def set_serve_pairing(
+        self, *, match_id: uuid.UUID, pairing: dict[uuid.UUID, uuid.UUID], actor: User
+    ) -> Match:
+        match = self.get_match(match_id)
+        member_ids = set(
+            self.db.execute(
+                select(TeamMember.player_id).where(
+                    TeamMember.team_id.in_([match.team_a_id, match.team_b_id])
+                )
+            ).scalars()
+        )
+        for errer, forcer in pairing.items():
+            if errer not in member_ids or forcer not in member_ids:
+                raise errors.invalid_serve_pairing("Pairing must reference players in this match.")
+        match.serve_pairing = {str(k): str(v) for k, v in pairing.items()}
+        match.updated_by = actor.id
+        self.db.commit()
+        self.db.refresh(match)
         return match
 
     def spectator_board(self) -> dict[str, list[tuple[Match, Tournament]]]:

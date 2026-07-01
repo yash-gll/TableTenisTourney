@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core import errors
@@ -46,8 +46,24 @@ class PointService:
         match.team_b_score = score["team_b"]
         return score
 
+    def _team_of(self, match: Match, player_id: uuid.UUID) -> uuid.UUID | None:
+        return self.db.execute(
+            select(TeamMember.team_id).where(
+                TeamMember.player_id == player_id,
+                TeamMember.team_id.in_([match.team_a_id, match.team_b_id]),
+            )
+        ).scalar_one_or_none()
+
     def log_point(
-        self, *, match_id: uuid.UUID, player_id: uuid.UUID, skill: str, kind: str = "WIN", actor
+        self,
+        *,
+        match_id: uuid.UUID,
+        player_id: uuid.UUID,
+        skill: str,
+        kind: str = "WIN",
+        forced_by: uuid.UUID | None = None,
+        forcer_skill: str | None = None,
+        actor,
     ) -> dict:
         match = self._match(match_id)
         if match.status in (MatchStatus.COMPLETED, MatchStatus.CANCELLED, MatchStatus.VOID):
@@ -67,13 +83,7 @@ class PointService:
                 raise errors.invalid_skill_rating(f"Unknown fault '{skill}'.")
             mapped_skill = skills_domain.FAULT_SKILL[skill]
 
-        # The player must belong to one of the two teams (find which).
-        player_team = self.db.execute(
-            select(TeamMember.team_id).where(
-                TeamMember.player_id == player_id,
-                TeamMember.team_id.in_([match.team_a_id, match.team_b_id]),
-            )
-        ).scalar_one_or_none()
+        player_team = self._team_of(match, player_id)
         if player_team is None:
             raise errors.invalid_prediction()  # player not in this match
 
@@ -85,6 +95,16 @@ class PointService:
             scoring_team = (
                 match.team_b_id if player_team == match.team_a_id else match.team_a_id
             )
+
+        # Forced error: the opponent who forced the fault earns a skill credit.
+        # The forcer must be on the team that won the point.
+        forcer_id = None
+        if kind == "FAULT" and forced_by is not None:
+            if forcer_skill not in skills_domain.SKILL_KEYS:
+                raise errors.invalid_skill_rating("A forced error needs the forcing skill.")
+            if self._team_of(match, forced_by) != scoring_team:
+                raise errors.invalid_skill_rating("The forcer must be an opponent of the errer.")
+            forcer_id = forced_by
 
         # First point auto-starts the match.
         if match.status == MatchStatus.SCHEDULED:
@@ -106,6 +126,8 @@ class PointService:
                 player_id=player_id,
                 skill=mapped_skill,
                 kind=kind,
+                forcer_id=forcer_id,
+                forcer_skill=forcer_skill if forcer_id else None,
             )
         )
         self.db.flush()
@@ -138,19 +160,27 @@ class PointService:
         profile = self.db.get(PlayerProfile, player_id)
         if profile is None:
             return
+        # Every rally touching this player, from completed matches — either as the
+        # actor (win/fault) or as the forcer of an opponent's forced error.
         rows = self.db.execute(
-            select(MatchPoint.skill, MatchPoint.kind, func.count())
+            select(MatchPoint)
             .join(Match, Match.id == MatchPoint.match_id)
             .where(
-                MatchPoint.player_id == player_id,
                 Match.status == MatchStatus.COMPLETED,
+                or_(MatchPoint.player_id == player_id, MatchPoint.forcer_id == player_id),
             )
-            .group_by(MatchPoint.skill, MatchPoint.kind)
-        ).all()
+        ).scalars().all()
         wins: dict[str, int] = {}
         errors_: dict[str, int] = {}
-        for skill, kind, count in rows:
-            (wins if kind == "WIN" else errors_)[skill] = int(count)
+        for r in rows:
+            if r.player_id == player_id:
+                if r.kind == "WIN":
+                    wins[r.skill] = wins.get(r.skill, 0) + 1
+                elif r.kind == "FAULT":
+                    errors_[r.skill] = errors_.get(r.skill, 0) + 1
+            # Forcing an opponent's error is a demonstrated strength (a "win").
+            if r.forcer_id == player_id and r.forcer_skill:
+                wins[r.forcer_skill] = wins.get(r.forcer_skill, 0) + 1
         pinned = profile.skill_overrides or {}
         ratings = dict(profile.skill_ratings or {})
         for key, _label in skills_domain.SKILL_ATTRIBUTES:
@@ -160,9 +190,12 @@ class PointService:
         profile.skill_ratings = ratings
 
     def recompute_for_match(self, match: Match) -> None:
-        player_ids = self.db.execute(
-            select(MatchPoint.player_id).where(MatchPoint.match_id == match.id).distinct()
-        ).scalars().all()
+        rows = self.db.execute(
+            select(MatchPoint.player_id, MatchPoint.forcer_id).where(
+                MatchPoint.match_id == match.id
+            )
+        ).all()
+        player_ids = {pid for pid, _ in rows} | {fid for _, fid in rows if fid is not None}
         for pid in player_ids:
             self.recompute_player_skills(pid)
         self.db.flush()

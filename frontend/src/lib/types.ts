@@ -235,6 +235,7 @@ export interface Match {
   started_at: string | null;
   completed_at: string | null;
   version: number;
+  serve_pairing: Record<string, string> | null;
 }
 
 export interface LiveMatch {
