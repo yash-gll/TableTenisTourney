@@ -126,6 +126,7 @@ class PointService:
                 player_id=player_id,
                 skill=mapped_skill,
                 kind=kind,
+                detail=skill if kind == "FAULT" else None,
                 forcer_id=forcer_id,
                 forcer_skill=forcer_skill if forcer_id else None,
             )

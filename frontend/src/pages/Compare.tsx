@@ -5,9 +5,16 @@ import { useSearchParams } from "react-router-dom";
 import { AppShell } from "../components/AppShell";
 import { Avatar } from "../components/Avatar";
 import { FormPills } from "../components/FormPills";
+import { ShotBreakdown } from "../components/ShotBreakdown";
 import { Card, Input } from "../components/ui";
 import { api } from "../lib/api";
-import type { PlayerRivals, PlayerSkills, PublicPlayer, PublicProfile } from "../lib/types";
+import type {
+  PlayerBreakdown,
+  PlayerRivals,
+  PlayerSkills,
+  PublicPlayer,
+  PublicProfile,
+} from "../lib/types";
 
 function usePlayer(id: string | null) {
   const profile = useQuery({
@@ -20,7 +27,12 @@ function usePlayer(id: string | null) {
     queryFn: () => api<PlayerSkills>(`/players/${id}/skills`),
     enabled: !!id,
   });
-  return { profile: profile.data, skills: skills.data };
+  const breakdown = useQuery({
+    queryKey: ["breakdown", id],
+    queryFn: () => api<PlayerBreakdown>(`/players/${id}/breakdown`),
+    enabled: !!id,
+  });
+  return { profile: profile.data, skills: skills.data, breakdown: breakdown.data };
 }
 
 export function ComparePicker({
@@ -212,6 +224,23 @@ export function ComparePage() {
                 {skillRows.map((r) => (
                   <CompareRow key={r.label} label={r.label} a={r.a} b={r.b} />
                 ))}
+              </Card>
+            )}
+
+            {a.breakdown && b.breakdown && (
+              <Card className="space-y-3">
+                <div className="text-center text-xs font-semibold uppercase text-slate-500">
+                  Shot breakdown
+                </div>
+                <div>
+                  <div className="mb-1 text-sm font-semibold">{a.profile.display_name}</div>
+                  <ShotBreakdown breakdown={a.breakdown} compact />
+                </div>
+                <hr className="border-slate-100" />
+                <div>
+                  <div className="mb-1 text-sm font-semibold">{b.profile.display_name}</div>
+                  <ShotBreakdown breakdown={b.breakdown} compact />
+                </div>
               </Card>
             )}
           </>

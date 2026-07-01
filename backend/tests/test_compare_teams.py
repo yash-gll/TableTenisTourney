@@ -50,6 +50,11 @@ def test_compare_teams_uses_pair_matches(client, db, admin_token):
     assert data["team_b"]["stats"]["losses"] == 1
     assert data["head_to_head"] == {"meetings": 1, "a_wins": 1, "b_wins": 0}
     assert len(data["team_a"]["skills"]) == 5
+    # Per-player breakdown, scoped to the pair's shared matches.
+    a_players = data["team_a"]["players"]
+    assert len(a_players) == 2
+    assert all("breakdown" in p and "faults_by_type" in p["breakdown"] for p in a_players)
+    assert sum(p["breakdown"]["total_points"] for p in a_players) > 0
 
 
 def test_compare_identical_teams_rejected(client, db, admin_token):

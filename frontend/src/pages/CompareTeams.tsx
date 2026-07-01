@@ -4,9 +4,10 @@ import { useState } from "react";
 import { AppShell } from "../components/AppShell";
 import { Avatar } from "../components/Avatar";
 import { FormPills } from "../components/FormPills";
+import { ShotBreakdown } from "../components/ShotBreakdown";
 import { Card } from "../components/ui";
 import { api } from "../lib/api";
-import type { PublicPlayer } from "../lib/types";
+import type { PlayerBreakdown, PublicPlayer } from "../lib/types";
 import { ComparePicker, CompareRow } from "./Compare";
 
 interface PairStats {
@@ -17,6 +18,11 @@ interface PairStats {
   points_for: number;
   points_against: number;
 }
+interface MemberBreakdown {
+  player_id: string;
+  name: string;
+  breakdown: PlayerBreakdown;
+}
 interface CompareSide {
   player_ids: string[];
   player_names: string[];
@@ -25,6 +31,7 @@ interface CompareSide {
   stats: PairStats;
   recent_form: string[];
   skills: { key: string; label: string; value: number | null }[];
+  players: MemberBreakdown[];
 }
 interface TeamCompareResult {
   team_a: CompareSide;
@@ -203,6 +210,25 @@ export function CompareTeamsPage() {
                 <CompareRow key={r.label} label={r.label} a={r.a} b={r.b} />
               ))}
             </Card>
+
+            {/* Per-player contribution within each pair's shared matches — who's
+                carrying the team and who's dragging it. */}
+            {[data.team_a, data.team_b].map((side, i) => (
+              <div key={i} className="space-y-2">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {i === 0 ? "Team A" : "Team B"} — per player (as a pair)
+                </h2>
+                {side.players.map((p) => (
+                  <Card key={p.player_id} className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Avatar name={p.name} size={28} />
+                      <span className="text-sm font-semibold">{p.name}</span>
+                    </div>
+                    <ShotBreakdown breakdown={p.breakdown} compact />
+                  </Card>
+                ))}
+              </div>
+            ))}
           </>
         )}
       </div>

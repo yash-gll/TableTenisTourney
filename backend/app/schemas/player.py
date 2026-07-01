@@ -72,6 +72,24 @@ class PlayerRivalsOut(BaseModel):
     rivals: list[RivalOut]
 
 
+class SkillCount(BaseModel):
+    key: str
+    label: str
+    count: int
+
+
+class PlayerBreakdownOut(BaseModel):
+    player_id: uuid.UUID
+    total_points: int
+    wins: int
+    faults: int
+    forced_faults: int
+    unforced_faults: int
+    points_forced: int
+    win_by_skill: list[SkillCount]
+    faults_by_type: list[SkillCount]
+
+
 class BadgeOut(BaseModel):
     key: str
     label: str

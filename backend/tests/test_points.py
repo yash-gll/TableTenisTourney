@@ -168,6 +168,31 @@ def test_finish_from_points_rejects_tie(client, db, admin_token):
     assert resp.status_code == 422
 
 
+def test_player_breakdown(client, db, admin_token):
+    tid, team_ids, smasher, m = _ready_match(client, db, admin_token)
+    errer = _player_on(client, tid, team_ids[1])
+
+    for _ in range(7):  # smasher wins 7 by smash
+        _log(client, admin_token, m["id"], smasher, "smash")
+    for _ in range(4):  # errer hits the net 4 times (unforced)
+        _log(client, admin_token, m["id"], errer, "hit_net", kind="FAULT")
+    version = client.get(f"/api/v1/matches/{m['id']}").json()["version"]
+    client.post(
+        f"/api/v1/matches/{m['id']}/points/complete?expected_version={version}",
+        headers=_auth(admin_token),
+    )
+
+    bd = client.get(f"/api/v1/players/{errer}/breakdown").json()
+    assert bd["faults"] == 4 and bd["wins"] == 0
+    net = next(f for f in bd["faults_by_type"] if f["key"] == "hit_net")
+    assert net["count"] == 4
+    assert bd["unforced_faults"] == 4 and bd["forced_faults"] == 0
+
+    winbd = client.get(f"/api/v1/players/{smasher}/breakdown").json()
+    smash = next(s for s in winbd["win_by_skill"] if s["key"] == "smash")
+    assert smash["count"] == 7 and winbd["total_points"] == 7
+
+
 def test_undo_point(client, db, admin_token):
     _tid, _team_ids, smasher, m = _ready_match(client, db, admin_token)
     _log(client, admin_token, m["id"], smasher, "serve")

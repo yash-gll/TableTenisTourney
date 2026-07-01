@@ -253,6 +253,24 @@ export interface LiveMatch {
   winner_name: string | null;
 }
 
+export interface SkillCount {
+  key: string;
+  label: string;
+  count: number;
+}
+
+export interface PlayerBreakdown {
+  player_id: string;
+  total_points: number;
+  wins: number;
+  faults: number;
+  forced_faults: number;
+  unforced_faults: number;
+  points_forced: number;
+  win_by_skill: SkillCount[];
+  faults_by_type: SkillCount[];
+}
+
 export interface Standing {
   rank: number;
   team_id: string;

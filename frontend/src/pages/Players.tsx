@@ -8,13 +8,14 @@ import { Avatar } from "../components/Avatar";
 import { FormPills } from "../components/FormPills";
 import { RatingSparkline } from "../components/RatingSparkline";
 import { RivalsCard } from "../components/RivalsCard";
+import { ShotBreakdown } from "../components/ShotBreakdown";
 import { SkillsCard } from "../components/SkillsCard";
 import { Card, Input } from "../components/ui";
 
 const MEDALS: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
-import type { PublicPlayer, PublicProfile } from "../lib/types";
+import type { PlayerBreakdown, PublicPlayer, PublicProfile } from "../lib/types";
 
 export function PlayersDirectory() {
   const { user } = useAuth();
@@ -102,6 +103,10 @@ export function PublicProfilePage() {
     queryKey: ["public-profile", id],
     queryFn: () => api<PublicProfile>(`/players/${id}`),
   });
+  const { data: breakdown } = useQuery({
+    queryKey: ["breakdown", id],
+    queryFn: () => api<PlayerBreakdown>(`/players/${id}/breakdown`),
+  });
 
   if (!profile) {
     return (
@@ -154,6 +159,17 @@ export function PublicProfilePage() {
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">Skills</h2>
           <SkillsCard playerId={profile.player_id} />
         </div>
+
+        {breakdown && (
+          <div>
+            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
+              Shot breakdown
+            </h2>
+            <Card>
+              <ShotBreakdown breakdown={breakdown} />
+            </Card>
+          </div>
+        )}
 
         <Link
           to={`/players/compare?a=${profile.player_id}`}

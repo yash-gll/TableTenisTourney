@@ -1,12 +1,13 @@
 import uuid
 from collections import defaultdict
 
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import and_, false, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core import errors
 from app.db.models.enums import ApprovalStatus, MatchStatus
 from app.db.models.match import Match
+from app.db.models.match_point import MatchPoint
 from app.db.models.player_profile import PlayerProfile
 from app.db.models.team_member import TeamMember
 from app.db.models.tournament_result import TournamentResult
@@ -176,6 +177,84 @@ class PlayerService:
         rivals.sort(key=lambda r: (-r["meetings"], -r["wins"]))
         return rivals
 
+    # -- shot / mistake breakdown -----------------------------------------
+
+    def player_breakdown(
+        self, player_id: uuid.UUID, match_ids: set[uuid.UUID] | None = None
+    ) -> dict:
+        """How a player wins and loses points, from logged rallies in completed
+        matches. Pass match_ids to scope it (e.g. to a pair's shared matches)."""
+        stmt = (
+            select(MatchPoint)
+            .join(Match, Match.id == MatchPoint.match_id)
+            .where(
+                Match.status == MatchStatus.COMPLETED,
+                or_(MatchPoint.player_id == player_id, MatchPoint.forcer_id == player_id),
+            )
+        )
+        if match_ids is not None:
+            if not match_ids:
+                stmt = stmt.where(false())
+            else:
+                stmt = stmt.where(MatchPoint.match_id.in_(match_ids))
+        rows = self.db.execute(stmt).scalars().all()
+
+        win_by_skill = {key: 0 for key, _ in skills_domain.SKILL_ATTRIBUTES}
+        faults_by_type = {key: 0 for key, _, _ in skills_domain.FAULTS}
+        fault_labels = {key: label for key, label, _ in skills_domain.FAULTS}
+        wins = faults = forced = unforced = points_forced = other_faults = 0
+        for r in rows:
+            if r.player_id == player_id:
+                if r.kind == "WIN":
+                    wins += 1
+                    if r.skill in win_by_skill:
+                        win_by_skill[r.skill] += 1
+                elif r.kind == "FAULT":
+                    faults += 1
+                    if r.forcer_id is not None:
+                        forced += 1
+                    else:
+                        unforced += 1
+                    if r.detail and r.detail in faults_by_type:
+                        faults_by_type[r.detail] += 1
+                    else:
+                        other_faults += 1
+            if r.forcer_id == player_id:
+                points_forced += 1
+
+        faults_list = [
+            {"key": k, "label": fault_labels[k], "count": faults_by_type[k]}
+            for k, _, _ in skills_domain.FAULTS
+        ]
+        if other_faults:
+            faults_list.append({"key": "other", "label": "Other", "count": other_faults})
+        return {
+            "player_id": player_id,
+            "total_points": wins + faults,
+            "wins": wins,
+            "faults": faults,
+            "forced_faults": forced,
+            "unforced_faults": unforced,
+            "points_forced": points_forced,
+            "win_by_skill": [
+                {"key": key, "label": label, "count": win_by_skill[key]}
+                for key, label in skills_domain.SKILL_ATTRIBUTES
+            ],
+            "faults_by_type": faults_list,
+        }
+
+    def _pair_match_ids(self, team_ids: list[uuid.UUID]) -> set[uuid.UUID]:
+        if not team_ids:
+            return set()
+        return set(
+            self.db.execute(
+                select(Match.id).where(
+                    Match.status == MatchStatus.COMPLETED,
+                    or_(Match.team_a_id.in_(team_ids), Match.team_b_id.in_(team_ids)),
+                )
+            ).scalars()
+        )
+
     # -- pair (team) comparison -------------------------------------------
 
     def _pair_team_ids(self, player_ids: list[uuid.UUID]) -> list[uuid.UUID]:
@@ -307,6 +386,19 @@ class PlayerService:
         side_a = self.pair_side(a_ids)
         side_b = self.pair_side(b_ids)
         h2h = self.pair_head_to_head(side_a["team_ids"], side_b["team_ids"])
+        # Per-player breakdown within each pair's shared matches — shows who on the
+        # team is winning points vs. dragging it down.
+        for side, ids in ((side_a, a_ids), (side_b, b_ids)):
+            match_ids = self._pair_match_ids(side["team_ids"])
+            names = {p.id: p.display_name for p in (self.get_profile(pid) for pid in ids)}
+            side["players"] = [
+                {
+                    "player_id": pid,
+                    "name": names[pid],
+                    "breakdown": self.player_breakdown(pid, match_ids),
+                }
+                for pid in ids
+            ]
         return {"team_a": side_a, "team_b": side_b, "head_to_head": h2h}
 
     def achievements(self, player_id: uuid.UUID) -> list[Badge]:

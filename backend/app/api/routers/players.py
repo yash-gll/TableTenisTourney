@@ -11,6 +11,7 @@ from app.schemas.mappers import to_profile_out
 from app.schemas.player import (
     BadgeOut,
     PlayerAchievementsOut,
+    PlayerBreakdownOut,
     PlayerProfileOut,
     PlayerRivalsOut,
     ProfileUpdate,
@@ -99,6 +100,13 @@ def get_player_achievements(
             for b in badges
         ],
     )
+
+
+@router.get("/{player_id}/breakdown", response_model=PlayerBreakdownOut)
+def get_player_breakdown(player_id: uuid.UUID, db: Session = Depends(get_db)) -> PlayerBreakdownOut:
+    service = PlayerService(db)
+    service.get_profile(player_id)  # 404 if unknown
+    return PlayerBreakdownOut(**service.player_breakdown(player_id))
 
 
 @router.get("/{player_id}/skills", response_model=PlayerSkillsOut)

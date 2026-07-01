@@ -32,6 +32,9 @@ class MatchPoint(UUIDMixin, Base):
     )
     skill: Mapped[str] = mapped_column(String(40), nullable=False)
     kind: Mapped[str] = mapped_column(String(8), nullable=False, server_default="WIN")
+    # The specific fault (e.g. "hit_net") for FAULT rows — skill only keeps the
+    # mapped dimension, so this preserves the granular breakdown. Null for wins.
+    detail: Mapped[str | None] = mapped_column(String(40))
     # Forced errors only: the opponent who forced the fault gets a skill credit
     # (this stays one row per rally, so the score and undo are unaffected).
     forcer_id: Mapped[uuid.UUID | None] = mapped_column(

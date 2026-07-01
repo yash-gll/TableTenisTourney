@@ -2,12 +2,19 @@ import uuid
 
 from pydantic import BaseModel, Field
 
+from app.schemas.player import PlayerBreakdownOut
 from app.schemas.skill import SkillItem
 
 
 class TeamCompareRequest(BaseModel):
     team_a: list[uuid.UUID] = Field(min_length=1, max_length=2)
     team_b: list[uuid.UUID] = Field(min_length=1, max_length=2)
+
+
+class MemberBreakdown(BaseModel):
+    player_id: uuid.UUID
+    name: str
+    breakdown: PlayerBreakdownOut
 
 
 class PairStats(BaseModel):
@@ -27,6 +34,7 @@ class TeamCompareSide(BaseModel):
     stats: PairStats
     recent_form: list[str]
     skills: list[SkillItem]
+    players: list[MemberBreakdown]
 
 
 class TeamHeadToHead(BaseModel):
