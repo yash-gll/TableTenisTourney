@@ -1,7 +1,7 @@
 import uuid
 from collections import defaultdict
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core import errors
@@ -11,6 +11,7 @@ from app.db.models.player_profile import PlayerProfile
 from app.db.models.team_member import TeamMember
 from app.db.models.tournament_result import TournamentResult
 from app.db.models.user import User
+from app.domain import skills as skills_domain
 from app.domain.achievements import AchievementInput, Badge, earned_badges
 from app.schemas.player import PlayerStatsOut, ProfileUpdate
 
@@ -174,6 +175,139 @@ class PlayerService:
         ]
         rivals.sort(key=lambda r: (-r["meetings"], -r["wins"]))
         return rivals
+
+    # -- pair (team) comparison -------------------------------------------
+
+    def _pair_team_ids(self, player_ids: list[uuid.UUID]) -> list[uuid.UUID]:
+        """Team ids whose roster is *exactly* this set of players — i.e. the
+        matches these players contested together as a pair (not with anyone else)."""
+        n = len(player_ids)
+        if n == 0:
+            return []
+        # Teams that contain all the given players.
+        contains_all = self.db.execute(
+            select(TeamMember.team_id)
+            .where(TeamMember.player_id.in_(player_ids))
+            .group_by(TeamMember.team_id)
+            .having(func.count(func.distinct(TeamMember.player_id)) == n)
+        ).scalars().all()
+        if not contains_all:
+            return []
+        # ...and whose total roster size is exactly n (so a single-player query
+        # doesn't match a doubles team that merely includes them).
+        exact = self.db.execute(
+            select(TeamMember.team_id)
+            .where(TeamMember.team_id.in_(contains_all))
+            .group_by(TeamMember.team_id)
+            .having(func.count() == n)
+        ).scalars().all()
+        return list(exact)
+
+    def pair_side(self, player_ids: list[uuid.UUID]) -> dict:
+        profiles = [self.get_profile(pid) for pid in player_ids]  # 404 if unknown
+        team_ids = set(self._pair_team_ids(player_ids))
+
+        # Combined skills = average of the members' per-skill ratings.
+        skills = []
+        for key, label in skills_domain.SKILL_ATTRIBUTES:
+            vals: list[int] = []
+            for p in profiles:
+                v = (p.skill_ratings or {}).get(key)
+                if v is not None:
+                    vals.append(v)
+            skills.append(
+                {"key": key, "label": label, "value": round(sum(vals) / len(vals)) if vals else None}
+            )
+
+        side = {
+            "player_ids": [p.id for p in profiles],
+            "player_names": [p.display_name for p in profiles],
+            "avg_rating": round(sum(p.current_rating for p in profiles) / len(profiles)),
+            "avg_peak": round(sum(p.highest_rating for p in profiles) / len(profiles)),
+            "skills": skills,
+            "team_ids": list(team_ids),  # internal; used for head-to-head
+        }
+
+        if not team_ids:
+            side["stats"] = {
+                "matches_played": 0, "wins": 0, "losses": 0, "win_pct": 0.0,
+                "points_for": 0, "points_against": 0,
+            }
+            side["recent_form"] = []
+            return side
+
+        matches = self.db.execute(
+            select(Match)
+            .where(
+                Match.status == MatchStatus.COMPLETED,
+                or_(Match.team_a_id.in_(team_ids), Match.team_b_id.in_(team_ids)),
+            )
+            .order_by(Match.completed_at.desc())
+        ).scalars().all()
+
+        played = wins = pf = pa = 0
+        form: list[str] = []
+        for m in matches:
+            is_a = m.team_a_id in team_ids
+            mine = (m.team_a_score if is_a else m.team_b_score) or 0
+            theirs = (m.team_b_score if is_a else m.team_a_score) or 0
+            won = m.winner_team_id in team_ids
+            played += 1
+            pf += mine
+            pa += theirs
+            if won:
+                wins += 1
+            if len(form) < 5:
+                form.append("W" if won else "L")
+
+        side["stats"] = {
+            "matches_played": played,
+            "wins": wins,
+            "losses": played - wins,
+            "win_pct": round(wins / played * 100, 1) if played else 0.0,
+            "points_for": pf,
+            "points_against": pa,
+        }
+        side["recent_form"] = form
+        return side
+
+    def pair_head_to_head(
+        self, a_team_ids: list[uuid.UUID], b_team_ids: list[uuid.UUID]
+    ) -> dict:
+        a, b = set(a_team_ids), set(b_team_ids)
+        if not a or not b:
+            return {"meetings": 0, "a_wins": 0, "b_wins": 0}
+        matches = self.db.execute(
+            select(Match).where(
+                Match.status == MatchStatus.COMPLETED,
+                or_(
+                    and_(Match.team_a_id.in_(a), Match.team_b_id.in_(b)),
+                    and_(Match.team_a_id.in_(b), Match.team_b_id.in_(a)),
+                ),
+            )
+        ).scalars().all()
+        meetings = a_wins = b_wins = 0
+        for m in matches:
+            meetings += 1
+            if m.winner_team_id in a:
+                a_wins += 1
+            elif m.winner_team_id in b:
+                b_wins += 1
+        return {"meetings": meetings, "a_wins": a_wins, "b_wins": b_wins}
+
+    def compare_pairs(
+        self, a_ids: list[uuid.UUID], b_ids: list[uuid.UUID]
+    ) -> dict:
+        a_ids = list(dict.fromkeys(a_ids))  # dedupe, keep order
+        b_ids = list(dict.fromkeys(b_ids))
+        if not 1 <= len(a_ids) <= 2 or not 1 <= len(b_ids) <= 2:
+            raise errors.invalid_comparison("Each team needs 1–2 players.")
+        if set(a_ids) == set(b_ids):
+            raise errors.invalid_comparison("Pick two different teams to compare.")
+        side_a = self.pair_side(a_ids)
+        side_b = self.pair_side(b_ids)
+        h2h = self.pair_head_to_head(side_a["team_ids"], side_b["team_ids"])
+        return {"team_a": side_a, "team_b": side_b, "head_to_head": h2h}
 
     def achievements(self, player_id: uuid.UUID) -> list[Badge]:
         team_ids = list(

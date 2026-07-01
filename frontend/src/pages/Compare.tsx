@@ -23,12 +23,23 @@ function usePlayer(id: string | null) {
   return { profile: profile.data, skills: skills.data };
 }
 
-function Picker({ onPick, onClose }: { onPick: (p: PublicPlayer) => void; onClose: () => void }) {
+export function ComparePicker({
+  onPick,
+  onClose,
+  excludeIds,
+  title = "Pick a player",
+}: {
+  onPick: (p: PublicPlayer) => void;
+  onClose: () => void;
+  excludeIds?: Set<string>;
+  title?: string;
+}) {
   const [q, setQ] = useState("");
   const { data } = useQuery({
     queryKey: ["players-directory", q],
     queryFn: () => api<PublicPlayer[]>(`/players${q.trim() ? `?search=${encodeURIComponent(q.trim())}` : ""}`),
   });
+  const players = (data ?? []).filter((p) => !excludeIds?.has(p.player_id));
   return (
     <div className="fixed inset-0 z-30 flex flex-col justify-end bg-black/40" onClick={onClose}>
       <div
@@ -37,12 +48,15 @@ function Picker({ onPick, onClose }: { onPick: (p: PublicPlayer) => void; onClos
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="font-semibold">Pick a player</h2>
+          <h2 className="font-semibold">{title}</h2>
           <button onClick={onClose} className="rounded-lg px-3 py-1.5 text-sm text-slate-500">Close</button>
         </div>
         <Input placeholder="Search players…" value={q} onChange={(e) => setQ(e.target.value)} />
         <div className="mt-3 max-h-[55vh] space-y-1 overflow-y-auto">
-          {(data ?? []).map((p) => (
+          {players.length === 0 && (
+            <p className="py-4 text-center text-sm text-slate-500">No other players found.</p>
+          )}
+          {players.map((p) => (
             <button
               key={p.player_id}
               onClick={() => onPick(p)}
@@ -59,7 +73,7 @@ function Picker({ onPick, onClose }: { onPick: (p: PublicPlayer) => void; onClos
   );
 }
 
-function Row({ label, a, b }: { label: string; a: number | null; b: number | null }) {
+export function CompareRow({ label, a, b }: { label: string; a: number | null; b: number | null }) {
   const aWins = a != null && b != null && a > b;
   const bWins = a != null && b != null && b > a;
   const cell = (v: number | null, win: boolean) => (
@@ -122,9 +136,15 @@ export function ComparePage() {
   const setSlot = (slot: "a" | "b", id: string) => {
     const next = new URLSearchParams(params);
     next.set(slot, id);
+    // Never let the same player sit in both slots.
+    if ((slot === "a" && id === bId) || (slot === "b" && id === aId)) {
+      next.delete(slot === "a" ? "b" : "a");
+    }
     setParams(next, { replace: true });
     setPicking(null);
   };
+
+  const samePlayer = !!aId && aId === bId;
 
   const skillRows =
     a.skills && b.skills
@@ -146,7 +166,13 @@ export function ComparePage() {
           </div>
         </Card>
 
-        {a.profile && b.profile && (
+        {samePlayer && (
+          <p className="text-center text-sm text-amber-600">
+            Pick two different players to compare.
+          </p>
+        )}
+
+        {a.profile && b.profile && !samePlayer && (
           <>
             <Card>
               <div className="text-center text-xs font-semibold uppercase text-slate-500">
@@ -170,12 +196,12 @@ export function ComparePage() {
             </Card>
 
             <Card className="py-1">
-              <Row label="Rating" a={a.profile.current_rating} b={b.profile.current_rating} />
-              <Row label="Peak" a={a.profile.highest_rating} b={b.profile.highest_rating} />
-              <Row label="Played" a={a.profile.stats.matches_played} b={b.profile.stats.matches_played} />
-              <Row label="Wins" a={a.profile.stats.wins} b={b.profile.stats.wins} />
-              <Row label="Win %" a={a.profile.stats.win_pct} b={b.profile.stats.win_pct} />
-              <Row label="Titles" a={a.profile.stats.tournament_wins} b={b.profile.stats.tournament_wins} />
+              <CompareRow label="Rating" a={a.profile.current_rating} b={b.profile.current_rating} />
+              <CompareRow label="Peak" a={a.profile.highest_rating} b={b.profile.highest_rating} />
+              <CompareRow label="Played" a={a.profile.stats.matches_played} b={b.profile.stats.matches_played} />
+              <CompareRow label="Wins" a={a.profile.stats.wins} b={b.profile.stats.wins} />
+              <CompareRow label="Win %" a={a.profile.stats.win_pct} b={b.profile.stats.win_pct} />
+              <CompareRow label="Titles" a={a.profile.stats.tournament_wins} b={b.profile.stats.tournament_wins} />
             </Card>
 
             {skillRows.length > 0 && (
@@ -184,7 +210,7 @@ export function ComparePage() {
                   Skills
                 </div>
                 {skillRows.map((r) => (
-                  <Row key={r.label} label={r.label} a={r.a} b={r.b} />
+                  <CompareRow key={r.label} label={r.label} a={r.a} b={r.b} />
                 ))}
               </Card>
             )}
@@ -197,7 +223,11 @@ export function ComparePage() {
       </div>
 
       {picking && (
-        <Picker onPick={(p) => setSlot(picking, p.player_id)} onClose={() => setPicking(null)} />
+        <ComparePicker
+          onPick={(p) => setSlot(picking, p.player_id)}
+          onClose={() => setPicking(null)}
+          excludeIds={new Set([picking === "a" ? bId : aId].filter(Boolean) as string[])}
+        />
       )}
     </AppShell>
   );

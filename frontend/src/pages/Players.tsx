@@ -38,12 +38,20 @@ export function PlayersDirectory() {
             Manage approvals & skills →
           </button>
         )}
-        <button
-          onClick={() => navigate("/players/compare")}
-          className="w-full rounded-lg border border-slate-200 py-2 text-sm font-medium text-indigo-700 active:bg-slate-50"
-        >
-          ⚖️ Compare players
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => navigate("/players/compare")}
+            className="flex-1 rounded-lg border border-slate-200 py-2 text-sm font-medium text-indigo-700 active:bg-slate-50"
+          >
+            ⚖️ Compare players
+          </button>
+          <button
+            onClick={() => navigate("/players/compare-teams")}
+            className="flex-1 rounded-lg border border-slate-200 py-2 text-sm font-medium text-indigo-700 active:bg-slate-50"
+          >
+            👥 Compare teams
+          </button>
+        </div>
         <Input placeholder="Search players by name…" value={q} onChange={(e) => setQ(e.target.value)} />
 
         {isLoading ? (

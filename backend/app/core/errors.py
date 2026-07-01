@@ -171,6 +171,10 @@ def invalid_exhibition(message: str) -> AppError:
     return AppError(422, "INVALID_EXHIBITION", message)
 
 
+def invalid_comparison(message: str) -> AppError:
+    return AppError(422, "INVALID_COMPARISON", message)
+
+
 def not_enough_teams(minimum: int) -> AppError:
     return AppError(
         status.HTTP_409_CONFLICT,
