@@ -74,8 +74,12 @@ export function PlayersDirectory() {
               return (
                 <Link key={p.player_id} to={`/players/${p.player_id}`} className="block">
                   <Card className="flex items-center gap-2 active:bg-slate-50">
-                    <span className="w-5 shrink-0 text-center text-sm font-semibold text-slate-500">
-                      {MEDALS[rank] ?? rank}
+                    <span className="w-7 shrink-0 text-center">
+                      {MEDALS[rank] ? (
+                        <span className="text-2xl leading-none">{MEDALS[rank]}</span>
+                      ) : (
+                        <span className="text-sm font-semibold text-slate-400">{rank}</span>
+                      )}
                     </span>
                     <Avatar name={p.display_name} size={40} />
                     {/* identity on the left, taking the slack so stats sit on the right */}
@@ -129,11 +133,19 @@ function RowStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Stat({ label, value }: { label: string; value: string | number }) {
+function Stat({
+  label,
+  value,
+  tone = "text-slate-800",
+}: {
+  label: string;
+  value: string | number;
+  tone?: string;
+}) {
   return (
-    <div className="rounded-lg bg-slate-50 p-3 text-center">
-      <div className="text-lg font-semibold tabular-nums">{value}</div>
-      <div className="text-xs text-slate-500">{label}</div>
+    <div className="rounded-xl border border-slate-100 bg-white p-3 text-center shadow-sm">
+      <div className={`text-xl font-bold tabular-nums ${tone}`}>{value}</div>
+      <div className="mt-0.5 text-[11px] uppercase tracking-wide text-slate-400">{label}</div>
     </div>
   );
 }
@@ -165,30 +177,42 @@ export function PublicProfilePage() {
   return (
     <AppShell title={profile.display_name}>
       <div className="space-y-5">
-        <div className="flex items-center gap-4">
-          <Avatar name={profile.display_name} size={64} />
-          <div>
-            <h1 className="text-xl font-semibold">{profile.display_name}</h1>
-            <p className="text-sm text-slate-500">
-              Rating {profile.current_rating} · peak {profile.highest_rating}
-            </p>
+        <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 p-5 text-white shadow-sm">
+          <div className="flex items-center gap-4">
+            <div className="rounded-full ring-4 ring-white/25">
+              <Avatar name={profile.display_name} size={64} />
+            </div>
+            <div className="min-w-0">
+              <h1 className="truncate text-xl font-bold">{profile.display_name}</h1>
+              <div className="mt-1.5 flex flex-wrap gap-1.5 text-xs">
+                <span className="rounded-full bg-white/20 px-2 py-0.5 font-medium tabular-nums">
+                  Rating {profile.current_rating}
+                </span>
+                <span className="rounded-full bg-white/20 px-2 py-0.5 font-medium tabular-nums">
+                  Peak {profile.highest_rating}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 flex items-center justify-between">
+            <span className="text-[11px] uppercase tracking-wide text-white/70">Recent form</span>
+            {profile.recent_form.length ? (
+              <FormPills form={profile.recent_form} />
+            ) : (
+              <span className="text-xs text-white/70">No matches yet</span>
+            )}
           </div>
         </div>
 
         <AchievementBadges playerId={profile.player_id} />
 
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-medium text-slate-500">Recent form</span>
-          <FormPills form={profile.recent_form} />
-        </div>
-
         <div className="grid grid-cols-3 gap-2">
           <Stat label="Played" value={s.matches_played} />
-          <Stat label="Wins" value={s.wins} />
-          <Stat label="Win %" value={`${s.win_pct}%`} />
-          <Stat label="Losses" value={s.losses} />
+          <Stat label="Wins" value={s.wins} tone="text-emerald-600" />
+          <Stat label="Win %" value={`${s.win_pct}%`} tone="text-indigo-600" />
+          <Stat label="Losses" value={s.losses} tone="text-rose-500" />
           <Stat label="Tourneys" value={s.tournaments_played} />
-          <Stat label="Titles" value={s.tournament_wins} />
+          <Stat label="Titles" value={s.tournament_wins} tone="text-amber-500" />
         </div>
 
         <RatingSparkline playerId={profile.player_id} />
@@ -207,9 +231,13 @@ export function PublicProfilePage() {
             </h2>
             {(() => {
               const mates = teammates.teammates;
-              // Only crown a best/worst when the top and bottom win% actually
-              // differ — otherwise it's a meaningless tie.
-              const distinct = mates.length > 1 && mates[0].win_pct !== mates[mates.length - 1].win_pct;
+              const top = mates[0];
+              const bottom = mates[mates.length - 1];
+              // Rank by win%, breaking ties by volume (more matches = more
+              // trustworthy). Only a genuine tie on BOTH is unrankable.
+              const distinct =
+                mates.length > 1 &&
+                (top.win_pct !== bottom.win_pct || top.matches !== bottom.matches);
               if (!distinct) {
                 return (
                   <Card>
