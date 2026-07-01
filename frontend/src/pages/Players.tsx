@@ -71,14 +71,15 @@ export function PlayersDirectory() {
                     <span className="w-5 shrink-0 text-center text-sm font-semibold text-slate-500">
                       {MEDALS[rank] ?? rank}
                     </span>
-                    <RowStat label="Rallies" pct={p.rally_win_pct} n={p.rallies_played} />
-                    <RowStat label="Matches" pct={p.win_pct} n={p.matches_played} />
                     <Avatar name={p.display_name} size={40} />
+                    {/* identity on the left, taking the slack so stats sit on the right */}
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-medium">{p.display_name}</div>
                       <div className="text-xs text-slate-400">Rating {p.current_rating}</div>
                     </div>
-                    <span className="text-slate-300">›</span>
+                    <RowStat label="Rallies" pct={p.rally_win_pct} n={p.rallies_played} />
+                    <RowStat label="Matches" pct={p.win_pct} n={p.matches_played} />
+                    <span className="shrink-0 text-slate-300">›</span>
                   </Card>
                 </Link>
               );
