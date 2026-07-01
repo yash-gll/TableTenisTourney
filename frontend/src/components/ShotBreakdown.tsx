@@ -32,10 +32,16 @@ export function ShotBreakdown({ breakdown, compact = false }: { breakdown: Playe
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between text-sm">
-        <span className="text-slate-500">{b.total_points} rallies</span>
-        <span className="font-medium text-emerald-600">{b.wins} won ({winPct}%)</span>
+        <span className="font-medium text-emerald-600">{b.wins} won</span>
+        <span className="text-slate-400">{winPct}% of {b.total_points}</span>
         <span className="font-medium text-rose-500">{b.faults} lost</span>
       </div>
+      {!compact && (
+        <p className="-mt-1 text-xs text-slate-400">
+          Points this player personally decided (won or lost). Each point is credited to one
+          player, so teammates' totals differ.
+        </p>
+      )}
 
       {wins.length > 0 && (
         <div className="space-y-1">
