@@ -46,6 +46,8 @@ export function PointLogger({ match, teamA, teamB, targetPoints, onClose, onChan
   const [fault, setFault] = useState<Fault | null>(null); // chosen fault, awaiting forced/unforced
   const [forcerId, setForcerId] = useState<string | null>(null);
   const [pairing, setPairing] = useState<Record<string, string>>(match.serve_pairing ?? {});
+  const [firstServer, setFirstServer] = useState<string | null>(match.first_server_id ?? null);
+  const [setupServer, setSetupServer] = useState<string | null>(match.first_server_id ?? null);
   const [showServeSetup, setShowServeSetup] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,8 +60,43 @@ export function PointLogger({ match, teamA, teamB, targetPoints, onClose, onChan
 
   const a = score?.team_a ?? 0;
   const b = score?.team_b ?? 0;
-  const decided = a !== b && (a >= targetPoints || b >= targetPoints);
   const isDoubles = (teamA?.members.length ?? 0) === 2 && (teamB?.members.length ?? 0) === 2;
+
+  const allMembers = useMemo<TeamMember[]>(
+    () => [...(teamA?.members ?? []), ...(teamB?.members ?? [])],
+    [teamA, teamB],
+  );
+  const nameOf = (id: string | null) =>
+    allMembers.find((m) => m.player_id === id)?.display_name ?? "";
+  const partnerOf = (id: string) => {
+    const team = teamA?.members.some((m) => m.player_id === id) ? teamA : teamB;
+    return team?.members.find((m) => m.player_id !== id)?.player_id ?? null;
+  };
+
+  // Whose serve it is now, from the fixed rotation: N serves each (2 to 11, 5 to
+  // 21), then 1 each at deuce (both at target-1).
+  const currentServer = useMemo(() => {
+    if (!firstServer || !teamA || !teamB) return null;
+    const receiver = pairing[firstServer] ?? partnerOf(firstServer); // fallback
+    let order: string[];
+    if (isDoubles && receiver) {
+      const sp = partnerOf(firstServer);
+      const rp = partnerOf(receiver);
+      order = [firstServer, receiver, sp, rp].filter(Boolean) as string[];
+    } else {
+      const opp =
+        allMembers.find((m) => m.player_id !== firstServer)?.player_id ?? null;
+      order = [firstServer, opp].filter(Boolean) as string[];
+    }
+    if (order.length < 2) return null;
+    const per = targetPoints >= 21 ? 5 : 2;
+    const played = a + b;
+    const deuceAt = 2 * (targetPoints - 1);
+    const turns =
+      played < deuceAt ? Math.floor(played / per) : deuceAt / per + (played - deuceAt);
+    return order[turns % order.length];
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firstServer, pairing, isDoubles, a, b, targetPoints, allMembers, teamA, teamB]);
 
   const opponents = useMemo<TeamMember[]>(() => {
     if (!pending || !teamA || !teamB) return [];
@@ -138,27 +175,29 @@ export function PointLogger({ match, teamA, teamB, targetPoints, onClose, onChan
     }
   };
 
-  const savePairing = async (map: Record<string, string>) => {
+  // Given who serves first and who receives first, both the diagonal pairing and
+  // the whole serve rotation are fixed.
+  const saveServe = async (server: string, receiver: string) => {
     setError(null);
+    let map: Record<string, string>;
+    if (isDoubles) {
+      const sp = partnerOf(server)!;
+      const rp = partnerOf(receiver)!;
+      map = { [server]: receiver, [receiver]: server, [sp]: rp, [rp]: sp };
+    } else {
+      map = { [server]: receiver, [receiver]: server };
+    }
     try {
-      await api(`/matches/${match.id}/serve-pairing`, { method: "PUT", body: { pairing: map } });
+      await api(`/matches/${match.id}/serve-pairing`, {
+        method: "PUT",
+        body: { pairing: map, first_server_id: server },
+      });
       setPairing(map);
+      setFirstServer(server);
       setShowServeSetup(false);
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Failed to save serve setup");
     }
-  };
-
-  // Doubles diagonal pairing: choosing A1's opponent fixes the whole map.
-  const pairingFor = (a1Opp: TeamMember): Record<string, string> => {
-    const [a1, a2] = teamA!.members;
-    const other = teamB!.members.find((m) => m.player_id !== a1Opp.player_id)!;
-    return {
-      [a1.player_id]: a1Opp.player_id,
-      [a1Opp.player_id]: a1.player_id,
-      [a2.player_id]: other.player_id,
-      [other.player_id]: a2.player_id,
-    };
   };
 
   return (
@@ -192,41 +231,78 @@ export function PointLogger({ match, teamA, teamB, targetPoints, onClose, onChan
             </div>
           ))}
         </div>
-        <p className="mt-1 text-center text-xs text-slate-400">First to {targetPoints} · {targetPoints}–{targetPoints - 1} counts</p>
+        <p className="mt-1 text-center text-xs text-slate-400">
+          First to {targetPoints} · deuce &amp; early stops OK
+        </p>
 
-        {/* Serve setup (doubles only) — sets the diagonal used to suggest the forcer */}
-        {isDoubles && (
-          <div className="mt-2">
-            <button
-              onClick={() => setShowServeSetup((v) => !v)}
-              className="text-xs font-medium text-indigo-600"
-            >
-              ⚙️ Serve setup {Object.keys(pairing).length ? "✓" : "(who's diagonal)"}
-            </button>
-            {showServeSetup && teamA && teamB && (
-              <div className="mt-2 rounded-xl border border-slate-200 p-3">
-                <div className="mb-1 text-xs text-slate-500">
-                  {teamA.members[0].display_name} serves diagonally to:
+        {/* Whose serve it is + serve setup */}
+        <div className="mt-2 flex items-center justify-between">
+          <div className="text-sm">
+            {currentServer ? (
+              <span className="font-medium text-slate-700">
+                🏓 <span className="font-semibold">{nameOf(currentServer)}</span> to serve
+                {pairing[currentServer] && (
+                  <span className="text-slate-400"> → {nameOf(pairing[currentServer])}</span>
+                )}
+              </span>
+            ) : (
+              <span className="text-slate-400">Set who serves first ↦</span>
+            )}
+          </div>
+          <button
+            onClick={() => setShowServeSetup((v) => !v)}
+            className="shrink-0 text-xs font-medium text-indigo-600"
+          >
+            ⚙️ Serve setup
+          </button>
+        </div>
+        {showServeSetup && teamA && teamB && (
+          <div className="mt-2 rounded-xl border border-slate-200 p-3">
+            <div className="mb-1 text-xs font-medium text-slate-500">Serves first</div>
+            <div className="flex flex-wrap gap-2">
+              {allMembers.map((m) => (
+                <button
+                  key={m.player_id}
+                  onClick={() => {
+                    setSetupServer(m.player_id);
+                    if (!isDoubles) {
+                      const opp = allMembers.find((x) => x.player_id !== m.player_id);
+                      if (opp) saveServe(m.player_id, opp.player_id);
+                    }
+                  }}
+                  className={`rounded-lg border px-3 py-1.5 text-sm font-medium ${
+                    setupServer === m.player_id
+                      ? "border-indigo-600 bg-indigo-50 text-indigo-700"
+                      : "border-slate-200 text-slate-600"
+                  }`}
+                >
+                  {m.display_name}
+                </button>
+              ))}
+            </div>
+            {isDoubles && setupServer && (
+              <>
+                <div className="mb-1 mt-3 text-xs font-medium text-slate-500">
+                  {nameOf(setupServer)} serves to (diagonal)
                 </div>
                 <div className="flex gap-2">
-                  {teamB.members.map((m) => {
-                    const active = pairing[teamA.members[0].player_id] === m.player_id;
-                    return (
+                  {(teamA.members.some((m) => m.player_id === setupServer) ? teamB : teamA).members.map(
+                    (o) => (
                       <button
-                        key={m.player_id}
-                        onClick={() => savePairing(pairingFor(m))}
+                        key={o.player_id}
+                        onClick={() => saveServe(setupServer, o.player_id)}
                         className={`flex-1 rounded-lg border px-2 py-2 text-sm font-medium ${
-                          active
+                          pairing[setupServer] === o.player_id
                             ? "border-indigo-600 bg-indigo-50 text-indigo-700"
                             : "border-slate-200 text-slate-600"
                         }`}
                       >
-                        {m.display_name}
+                        {o.display_name}
                       </button>
-                    );
-                  })}
+                    ),
+                  )}
                 </div>
-              </div>
+              </>
             )}
           </div>
         )}
@@ -342,7 +418,7 @@ export function PointLogger({ match, teamA, teamB, targetPoints, onClose, onChan
                       {team.members.map((mem) => (
                         <button
                           key={mem.player_id}
-                          disabled={busy || decided}
+                          disabled={busy}
                           onClick={() =>
                             setPending({
                               playerId: mem.player_id,
@@ -368,8 +444,8 @@ export function PointLogger({ match, teamA, teamB, targetPoints, onClose, onChan
           <Button variant="secondary" className="flex-1" disabled={busy || (a === 0 && b === 0)} onClick={undo}>
             Undo
           </Button>
-          <Button className="flex-1" disabled={busy || !decided} onClick={finish}>
-            {decided ? "Finish match" : "Win needs a lead"}
+          <Button className="flex-1" disabled={busy || a === b} onClick={finish}>
+            {a === b ? "Tied — log a point" : "Finish match"}
           </Button>
         </div>
       </div>

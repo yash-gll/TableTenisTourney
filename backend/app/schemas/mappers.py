@@ -116,6 +116,7 @@ def to_match_out(match: Match) -> MatchOut:
         completed_at=match.completed_at,
         version=match.version,
         serve_pairing=match.serve_pairing,
+        first_server_id=match.first_server_id,
     )
 
 

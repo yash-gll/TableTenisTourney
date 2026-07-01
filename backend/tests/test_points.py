@@ -133,11 +133,39 @@ def test_set_serve_pairing(client, db, admin_token):
     b = _player_on(client, tid, team_ids[1])
     resp = client.put(
         f"/api/v1/matches/{m['id']}/serve-pairing",
-        json={"pairing": {a: b, b: a}},
+        json={"pairing": {a: b, b: a}, "first_server_id": a},
         headers=_auth(admin_token),
     )
     assert resp.status_code == 200
     assert resp.json()["serve_pairing"] == {a: b, b: a}
+    assert resp.json()["first_server_id"] == a
+
+
+def test_finish_from_points_leader_wins_early(client, db, admin_token):
+    tid, team_ids, smasher, m = _ready_match(client, db, admin_token)
+    # Stop at 5-0 (well short of 11) — admin ends it, leader wins.
+    for _ in range(5):
+        _log(client, admin_token, m["id"], smasher, "smash")
+    version = client.get(f"/api/v1/matches/{m['id']}").json()["version"]
+    done = client.post(
+        f"/api/v1/matches/{m['id']}/points/complete?expected_version={version}",
+        headers=_auth(admin_token),
+    )
+    assert done.status_code == 200
+    assert done.json()["winner_team_id"] == team_ids[0]
+
+
+def test_finish_from_points_rejects_tie(client, db, admin_token):
+    tid, team_ids, smasher, m = _ready_match(client, db, admin_token)
+    other = _player_on(client, tid, team_ids[1])
+    _log(client, admin_token, m["id"], smasher, "smash")
+    _log(client, admin_token, m["id"], other, "smash")  # 1-1
+    version = client.get(f"/api/v1/matches/{m['id']}").json()["version"]
+    resp = client.post(
+        f"/api/v1/matches/{m['id']}/points/complete?expected_version={version}",
+        headers=_auth(admin_token),
+    )
+    assert resp.status_code == 422
 
 
 def test_undo_point(client, db, admin_token):

@@ -27,6 +27,7 @@ class MatchOut(BaseModel):
     completed_at: datetime | None
     version: int
     serve_pairing: dict[str, str] | None = None
+    first_server_id: uuid.UUID | None = None
 
 
 class LiveMatchOut(BaseModel):
@@ -54,6 +55,7 @@ class SpectatorBoard(BaseModel):
 class ServePairingRequest(BaseModel):
     # {player_id: their diagonal opponent_id}, symmetric, for all match players.
     pairing: dict[uuid.UUID, uuid.UUID]
+    first_server_id: uuid.UUID | None = None
 
 
 class CompleteRequest(BaseModel):

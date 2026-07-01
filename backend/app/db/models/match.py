@@ -80,6 +80,10 @@ class Match(UUIDMixin, TimestampMixin, Base):
     # Diagonal serve pairing {player_id: opponent_id} — drives the forced-error
     # "who forced it?" auto-suggestion. Null until set (or trivial for singles).
     serve_pairing: Mapped[dict | None] = mapped_column(_JSONType)
+    # Who serves the first point; with the pairing this fixes the serve rotation.
+    first_server_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(), ForeignKey("player_profiles.id", ondelete="SET NULL")
+    )
     version: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     admin_note: Mapped[str | None] = mapped_column(Text)
     created_by: Mapped[uuid.UUID | None] = mapped_column(

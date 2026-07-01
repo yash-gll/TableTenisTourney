@@ -38,7 +38,12 @@ class ScoringService:
         return match
 
     def set_serve_pairing(
-        self, *, match_id: uuid.UUID, pairing: dict[uuid.UUID, uuid.UUID], actor: User
+        self,
+        *,
+        match_id: uuid.UUID,
+        pairing: dict[uuid.UUID, uuid.UUID],
+        first_server_id: uuid.UUID | None,
+        actor: User,
     ) -> Match:
         match = self.get_match(match_id)
         member_ids = set(
@@ -51,7 +56,10 @@ class ScoringService:
         for errer, forcer in pairing.items():
             if errer not in member_ids or forcer not in member_ids:
                 raise errors.invalid_serve_pairing("Pairing must reference players in this match.")
+        if first_server_id is not None and first_server_id not in member_ids:
+            raise errors.invalid_serve_pairing("First server must be a player in this match.")
         match.serve_pairing = {str(k): str(v) for k, v in pairing.items()}
+        match.first_server_id = first_server_id
         match.updated_by = actor.id
         self.db.commit()
         self.db.refresh(match)
@@ -181,18 +189,41 @@ class ScoringService:
     def complete_from_points(
         self, *, match_id: uuid.UUID, expected_version: int, actor: User, meta: dict
     ) -> Match:
-        """Complete a match whose score is the tally of logged points."""
+        """Finish a match from the tally of logged points. The admin ends the game
+        explicitly, so we don't enforce target/win-by-two here — whoever leads
+        wins (deuce, early stops, and 21-point games all just work). Only a tie
+        is rejected, since it has no winner."""
         from app.services.point_service import PointService
 
         match = self.get_match(match_id)
         if match.status not in (MatchStatus.SCHEDULED, MatchStatus.IN_PROGRESS):
             raise errors.match_not_editable("Only a scheduled or in-progress match can be completed.")
         self._check_version(match, expected_version)
+        if match.team_a_id is None or match.team_b_id is None:
+            raise errors.match_not_editable("Both teams must be known before completing.")
+
         score = PointService(self.db).running_score(match_id)
-        return self.complete_match(
-            match_id=match_id, a=score["team_a"], b=score["team_b"],
-            expected_version=expected_version, actor=actor, meta=meta,
+        a, b = score["team_a"], score["team_b"]
+        if a == b:
+            raise errors.invalid_match_score("Scores are level — log one more point to decide it.")
+
+        tournament = self._tournament(match)
+        side: scoring.WinnerSide = "A" if a > b else "B"
+        self._apply_result(match, a, b, side)
+        match.status = MatchStatus.COMPLETED
+        match.completed_at = _now()
+        match.version += 1
+        match.updated_by = actor.id
+        self.audit.record(
+            actor_user_id=actor.id, action="match.complete", entity_type="match",
+            entity_id=str(match.id),
+            after_data={"team_a_score": a, "team_b_score": b, "winner": str(match.winner_team_id)},
+            ip_address=meta.get("ip_address"), user_agent=meta.get("user_agent"),
         )
+        self._after_result(match, tournament)
+        self.db.commit()
+        self.db.refresh(match)
+        return match
 
     def correct_match(
         self, *, match_id: uuid.UUID, a: int, b: int, expected_version: int, reason: str,

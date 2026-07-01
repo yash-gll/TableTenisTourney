@@ -43,7 +43,7 @@ def set_serve_pairing(
     db: Session = Depends(get_db),
 ) -> MatchOut:
     match = ScoringService(db).set_serve_pairing(
-        match_id=match_id, pairing=body.pairing, actor=actor
+        match_id=match_id, pairing=body.pairing, first_server_id=body.first_server_id, actor=actor
     )
     return to_match_out(match)
 
