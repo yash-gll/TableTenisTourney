@@ -47,6 +47,8 @@ class PublicPlayerOut(BaseModel):
     rallies_won: int = 0
     rallies_lost: int = 0
     rally_win_pct: float = 0.0
+    avg_points_for: float = 0.0
+    avg_points_against: float = 0.0
 
 
 class PlayerStatsOut(BaseModel):
@@ -108,6 +110,20 @@ class BadgeOut(BaseModel):
 class PlayerAchievementsOut(BaseModel):
     player_id: uuid.UUID
     achievements: list[BadgeOut]
+
+
+class TeammateOut(BaseModel):
+    player_id: uuid.UUID
+    name: str
+    matches: int
+    wins: int
+    losses: int
+    win_pct: float
+
+
+class PlayerTeammatesOut(BaseModel):
+    player_id: uuid.UUID
+    teammates: list[TeammateOut]
 
 
 class MeResponse(BaseModel):

@@ -14,10 +14,12 @@ from app.schemas.player import (
     PlayerBreakdownOut,
     PlayerProfileOut,
     PlayerRivalsOut,
+    PlayerTeammatesOut,
     ProfileUpdate,
     PublicPlayerOut,
     PublicProfileOut,
     RivalOut,
+    TeammateOut,
 )
 from app.schemas.skill import PlayerSkillsOut, SkillItem
 from app.services.player_service import PlayerService
@@ -49,6 +51,8 @@ def search_players(
             rallies_won=r["rallies_won"],
             rallies_lost=r["rallies_lost"],
             rally_win_pct=r["rally_win_pct"],
+            avg_points_for=r["avg_points_for"],
+            avg_points_against=r["avg_points_against"],
         )
         for r in rows
     ]
@@ -91,6 +95,16 @@ def get_player_rivals(player_id: uuid.UUID, db: Session = Depends(get_db)) -> Pl
     return PlayerRivalsOut(
         player_id=player_id,
         rivals=[RivalOut(**r) for r in service.rivals(player_id)],
+    )
+
+
+@router.get("/{player_id}/teammates", response_model=PlayerTeammatesOut)
+def get_player_teammates(player_id: uuid.UUID, db: Session = Depends(get_db)) -> PlayerTeammatesOut:
+    service = PlayerService(db)
+    service.get_profile(player_id)  # 404 if unknown
+    return PlayerTeammatesOut(
+        player_id=player_id,
+        teammates=[TeammateOut(**t) for t in service.teammates(player_id)],
     )
 
 

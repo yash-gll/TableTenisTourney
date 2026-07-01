@@ -54,6 +54,22 @@ export interface PublicPlayer {
   rallies_won: number;
   rallies_lost: number;
   rally_win_pct: number;
+  avg_points_for: number;
+  avg_points_against: number;
+}
+
+export interface Teammate {
+  player_id: string;
+  name: string;
+  matches: number;
+  wins: number;
+  losses: number;
+  win_pct: number;
+}
+
+export interface PlayerTeammates {
+  player_id: string;
+  teammates: Teammate[];
 }
 
 export interface PlayerStats {

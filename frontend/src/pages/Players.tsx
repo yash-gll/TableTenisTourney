@@ -15,7 +15,13 @@ import { Card, Input } from "../components/ui";
 const MEDALS: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 import { api } from "../lib/api";
 import { useAuth } from "../lib/auth";
-import type { PlayerBreakdown, PublicPlayer, PublicProfile } from "../lib/types";
+import type {
+  PlayerBreakdown,
+  PlayerTeammates,
+  PublicPlayer,
+  PublicProfile,
+  Teammate,
+} from "../lib/types";
 
 export function PlayersDirectory() {
   const { user } = useAuth();
@@ -77,8 +83,14 @@ export function PlayersDirectory() {
                       <div className="truncate font-medium">{p.display_name}</div>
                       <div className="text-xs text-slate-400">Rating {p.current_rating}</div>
                     </div>
-                    <RowStat label="Rallies" pct={p.rally_win_pct} n={p.rallies_played} />
-                    <RowStat label="Matches" pct={p.win_pct} n={p.matches_played} />
+                    <RowStat
+                      label="Won /m"
+                      value={p.matches_played ? p.avg_points_for.toFixed(1) : "–"}
+                    />
+                    <RowStat
+                      label="Lost /m"
+                      value={p.matches_played ? p.avg_points_against.toFixed(1) : "–"}
+                    />
                     <span className="shrink-0 text-slate-300">›</span>
                   </Card>
                 </Link>
@@ -91,14 +103,35 @@ export function PlayersDirectory() {
   );
 }
 
-function RowStat({ label, pct, n }: { label: string; pct: number; n: number }) {
-  return (
-    <div className="w-11 shrink-0 text-center leading-tight">
-      <div className="text-sm font-semibold tabular-nums text-slate-700">
-        {n ? `${Math.round(pct)}%` : "–"}
+function TeammateCard({ t }: { t: Teammate | null }) {
+  if (!t) {
+    return (
+      <div className="w-full rounded-lg border border-dashed border-slate-200 p-3 text-center text-xs text-slate-400">
+        Not enough partners yet
       </div>
+    );
+  }
+  return (
+    <Link
+      to={`/players/${t.player_id}`}
+      className="block w-full rounded-lg border border-slate-200 p-3 text-center active:bg-slate-50"
+    >
+      <div className="flex justify-center">
+        <Avatar name={t.name} size={40} />
+      </div>
+      <div className="mt-1 truncate text-sm font-medium">{t.name}</div>
+      <div className="text-xs text-slate-500">
+        {t.wins}-{t.losses} · {t.win_pct}%
+      </div>
+    </Link>
+  );
+}
+
+function RowStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="w-12 shrink-0 text-center leading-tight">
+      <div className="text-sm font-semibold tabular-nums text-slate-700">{value}</div>
       <div className="text-[10px] uppercase tracking-wide text-slate-400">{label}</div>
-      <div className="text-[10px] tabular-nums text-slate-400">{n}</div>
     </div>
   );
 }
@@ -121,6 +154,10 @@ export function PublicProfilePage() {
   const { data: breakdown } = useQuery({
     queryKey: ["breakdown", id],
     queryFn: () => api<PlayerBreakdown>(`/players/${id}/breakdown`),
+  });
+  const { data: teammates } = useQuery({
+    queryKey: ["teammates", id],
+    queryFn: () => api<PlayerTeammates>(`/players/${id}/teammates`),
   });
 
   if (!profile) {
@@ -169,6 +206,34 @@ export function PublicProfilePage() {
           </h2>
           <RivalsCard playerId={profile.player_id} />
         </div>
+
+        {teammates && teammates.teammates.length > 0 && (
+          <div>
+            <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">
+              Teammates
+            </h2>
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <div className="mb-1 text-center text-xs font-semibold uppercase text-emerald-600">
+                  Best
+                </div>
+                <TeammateCard t={teammates.teammates[0]} />
+              </div>
+              <div className="flex-1">
+                <div className="mb-1 text-center text-xs font-semibold uppercase text-rose-500">
+                  Worst
+                </div>
+                <TeammateCard
+                  t={
+                    teammates.teammates.length > 1
+                      ? teammates.teammates[teammates.teammates.length - 1]
+                      : null
+                  }
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
         <div>
           <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-slate-500">Skills</h2>

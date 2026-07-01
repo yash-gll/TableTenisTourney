@@ -68,19 +68,28 @@ class PlayerService:
 
         played: dict[uuid.UUID, int] = defaultdict(int)
         wins: dict[uuid.UUID, int] = defaultdict(int)
+        pts_for: dict[uuid.UUID, int] = defaultdict(int)
+        pts_against: dict[uuid.UUID, int] = defaultdict(int)
         if all_team_ids:
             matches = self.db.execute(
-                select(Match.team_a_id, Match.team_b_id, Match.winner_team_id).where(
+                select(
+                    Match.team_a_id, Match.team_b_id, Match.winner_team_id,
+                    Match.team_a_score, Match.team_b_score,
+                ).where(
                     Match.status == MatchStatus.COMPLETED,
                     or_(Match.team_a_id.in_(all_team_ids), Match.team_b_id.in_(all_team_ids)),
                 )
             ).all()
-            for a_id, b_id, winner in matches:
+            for a_id, b_id, winner, a_score, b_score in matches:
                 for pid, tids in player_teams.items():
-                    if a_id in tids or b_id in tids:
-                        played[pid] += 1
-                        if winner in tids:
-                            wins[pid] += 1
+                    if a_id not in tids and b_id not in tids:
+                        continue
+                    played[pid] += 1
+                    if winner in tids:
+                        wins[pid] += 1
+                    on_a = a_id in tids
+                    pts_for[pid] += (a_score if on_a else b_score) or 0
+                    pts_against[pid] += (b_score if on_a else a_score) or 0
 
         # Rally-level: rallies this player won (own winners + errors they forced)
         # vs lost (own faults), across completed matches — two grouped queries.
@@ -120,6 +129,8 @@ class PlayerService:
                     "rallies_won": rw,
                     "rallies_lost": rl,
                     "rally_win_pct": round(rw / rp * 100, 1) if rp else 0.0,
+                    "avg_points_for": round(pts_for.get(p.id, 0) / pl, 1) if pl else 0.0,
+                    "avg_points_against": round(pts_against.get(p.id, 0) / pl, 1) if pl else 0.0,
                 }
             )
         return out
@@ -479,6 +490,68 @@ class PlayerService:
                 for pid in ids
             ]
         return {"team_a": side_a, "team_b": side_b, "head_to_head": h2h}
+
+    def teammates(self, player_id: uuid.UUID) -> list[dict]:
+        """The player's win record paired with each partner (doubles), best first."""
+        p_teams = self._team_ids(player_id)
+        if not p_teams:
+            return []
+        # The other member of each of the player's teams (doubles → one partner).
+        team_to_mate: dict[uuid.UUID, uuid.UUID] = {}
+        for team_id, mate_id in self.db.execute(
+            select(TeamMember.team_id, TeamMember.player_id).where(
+                TeamMember.team_id.in_(p_teams), TeamMember.player_id != player_id
+            )
+        ).all():
+            team_to_mate[team_id] = mate_id
+        if not team_to_mate:
+            return []
+
+        shared_teams = set(team_to_mate)
+        team_played: dict[uuid.UUID, int] = defaultdict(int)
+        team_wins: dict[uuid.UUID, int] = defaultdict(int)
+        for a_id, b_id, winner in self.db.execute(
+            select(Match.team_a_id, Match.team_b_id, Match.winner_team_id).where(
+                Match.status == MatchStatus.COMPLETED,
+                or_(Match.team_a_id.in_(shared_teams), Match.team_b_id.in_(shared_teams)),
+            )
+        ).all():
+            for t in shared_teams:
+                if a_id == t or b_id == t:
+                    team_played[t] += 1
+                    if winner == t:
+                        team_wins[t] += 1
+
+        mate_teams: dict[uuid.UUID, set[uuid.UUID]] = defaultdict(set)
+        for team_id, mate_id in team_to_mate.items():
+            mate_teams[mate_id].add(team_id)
+        names: dict[uuid.UUID, str] = {
+            pid: name
+            for pid, name in self.db.execute(
+                select(PlayerProfile.id, PlayerProfile.display_name).where(
+                    PlayerProfile.id.in_(mate_teams.keys())
+                )
+            ).all()
+        }
+
+        result: list[dict] = []
+        for mate, teams in mate_teams.items():
+            pl = sum(team_played[t] for t in teams)
+            if pl == 0:
+                continue
+            wn = sum(team_wins[t] for t in teams)
+            result.append(
+                {
+                    "player_id": mate,
+                    "name": names.get(mate, "?"),
+                    "matches": pl,
+                    "wins": wn,
+                    "losses": pl - wn,
+                    "win_pct": round(wn / pl * 100, 1),
+                }
+            )
+        result.sort(key=lambda r: (-r["win_pct"], -r["matches"]))
+        return result
 
     def achievements(self, player_id: uuid.UUID) -> list[Badge]:
         team_ids = list(
