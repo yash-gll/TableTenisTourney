@@ -14,6 +14,7 @@ from app.api.routers import (
     health,
     history,
     leaderboards,
+    live,
     matches,
     players,
     points,
@@ -86,6 +87,7 @@ app.include_router(predictions.router, prefix=API_PREFIX)
 app.include_router(points.router, prefix=API_PREFIX)
 app.include_router(exhibitions.router, prefix=API_PREFIX)
 app.include_router(compare.router, prefix=API_PREFIX)
+app.include_router(live.router, prefix=API_PREFIX)
 
 
 @app.get("/")

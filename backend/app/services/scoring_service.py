@@ -1,11 +1,17 @@
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.core import errors
-from app.db.models.enums import AuditSeverity, MatchStage, MatchStatus, TournamentStatus
+from app.db.models.enums import (
+    AuditSeverity,
+    MatchStage,
+    MatchStatus,
+    TournamentStatus,
+    TournamentVisibility,
+)
 from app.db.models.match import Match
 from app.db.models.tournament import Tournament
 from app.db.models.user import User
@@ -29,6 +35,23 @@ class ScoringService:
         if match is None:
             raise errors.match_not_found()
         return match
+
+    def live_matches(self) -> list[tuple[Match, Tournament]]:
+        """Every match currently in progress that anyone may spectate — all
+        exhibitions plus non-private tournaments. Private tournaments stay hidden."""
+        rows = self.db.execute(
+            select(Match, Tournament)
+            .join(Tournament, Tournament.id == Match.tournament_id)
+            .where(
+                Match.status == MatchStatus.IN_PROGRESS,
+                or_(
+                    Tournament.is_exhibition.is_(True),
+                    Tournament.visibility != TournamentVisibility.PRIVATE,
+                ),
+            )
+            .order_by(Match.created_at.desc())
+        ).all()
+        return [(m, t) for m, t in rows]
 
     def _tournament(self, match: Match) -> Tournament:
         t = self.db.get(Tournament, match.tournament_id)

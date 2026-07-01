@@ -7,6 +7,7 @@ import { Dashboard } from "./pages/Dashboard";
 import { ForgotPassword } from "./pages/ForgotPassword";
 import { HistoryDetailPage, HistoryList } from "./pages/History";
 import { Landing } from "./pages/Landing";
+import { LivePage } from "./pages/Live";
 import { ComparePage } from "./pages/Compare";
 import { CompareTeamsPage } from "./pages/CompareTeams";
 import { ExhibitionDetail } from "./pages/ExhibitionDetail";
@@ -93,6 +94,14 @@ export function AppRoutes() {
         element={
           <RequireAuth>
             <PublicProfilePage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/live"
+        element={
+          <RequireAuth>
+            <LivePage />
           </RequireAuth>
         }
       />

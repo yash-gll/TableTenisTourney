@@ -34,6 +34,15 @@ function TrophyIcon({ active }: { active: boolean }) {
   );
 }
 
+function LiveIcon({ active }: { active: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={active ? 2.4 : 1.8}>
+      <circle cx="12" cy="12" r="3" fill={active ? "currentColor" : "none"} />
+      <path d="M6.5 6.5a7.8 7.8 0 0 0 0 11M17.5 6.5a7.8 7.8 0 0 1 0 11" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 function HistoryIcon({ active }: { active: boolean }) {
   return (
     <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={active ? 2.4 : 1.8}>
@@ -55,6 +64,7 @@ export function AppShell({ title, children }: { title: string; children: ReactNo
   const location = useLocation();
 
   const tabs: Tab[] = [{ to: "/dashboard", label: "Profile", icon: ProfileIcon }];
+  tabs.push({ to: "/live", label: "Live", icon: LiveIcon });
   tabs.push({ to: "/tournaments", label: "Tournaments", icon: TrophyIcon });
   tabs.push({ to: "/players", label: "Players", icon: PlayersIcon });
   tabs.push({ to: "/history", label: "History", icon: HistoryIcon });

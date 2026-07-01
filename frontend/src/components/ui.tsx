@@ -38,9 +38,21 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
   },
 );
 
-export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
+export function Card({
+  children,
+  className = "",
+  onClick,
+}: {
+  children: ReactNode;
+  className?: string;
+  onClick?: () => void;
+}) {
   return (
-    <div className={`rounded-lg border border-slate-200 bg-white p-6 shadow-sm ${className}`}>
+    <div
+      onClick={onClick}
+      role={onClick ? "button" : undefined}
+      className={`rounded-lg border border-slate-200 bg-white p-6 shadow-sm ${className}`}
+    >
       {children}
     </div>
   );

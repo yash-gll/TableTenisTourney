@@ -237,6 +237,19 @@ export interface Match {
   version: number;
 }
 
+export interface LiveMatch {
+  id: string;
+  tournament_id: string;
+  is_exhibition: boolean;
+  context_name: string;
+  team_a_name: string | null;
+  team_b_name: string | null;
+  team_a_score: number | null;
+  team_b_score: number | null;
+  status: MatchStatus;
+  target_points: number;
+}
+
 export interface Standing {
   rank: number;
   team_id: string;

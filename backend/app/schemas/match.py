@@ -28,6 +28,21 @@ class MatchOut(BaseModel):
     version: int
 
 
+class LiveMatchOut(BaseModel):
+    """A spectatable in-progress match, with the running score already on the row."""
+
+    id: uuid.UUID
+    tournament_id: uuid.UUID
+    is_exhibition: bool
+    context_name: str
+    team_a_name: str | None
+    team_b_name: str | None
+    team_a_score: int | None
+    team_b_score: int | None
+    status: MatchStatus
+    target_points: int
+
+
 class CompleteRequest(BaseModel):
     team_a_score: int = Field(ge=0)
     team_b_score: int = Field(ge=0)
